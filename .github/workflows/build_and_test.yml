@@ -1,6 +1,6 @@
 # Builds the pyrit environment and runs all tests and pre-commit hooks
 
-name: build_and_test
+name: post'get'volume
 
 on:
   push:
