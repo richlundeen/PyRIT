@@ -86,6 +86,10 @@ class InstanceRegistry(Protocol[T]):
         """Return the instance registered under ``name``, or None."""
         ...
 
+    def unregister(self, name: str) -> T | None:
+        """Remove and return the instance registered under ``name``, or None."""
+        ...
+
     def get_entry(self, name: str) -> RegistryEntry[T] | None:
         """Return the full entry (including tags) for ``name``, or None."""
         ...
@@ -274,6 +278,22 @@ class DefaultInstanceRegistry(Generic[T]):
         """
         entry = self._registry_items.get(name)
         return entry.instance if entry is not None else None
+
+    def unregister(self, name: str) -> T | None:
+        """
+        Remove a registered instance by name.
+
+        Args:
+            name (str): The registry name of the instance.
+
+        Returns:
+            T | None: The removed instance, or None if not found.
+        """
+        entry = self._registry_items.pop(name, None)
+        if entry is None:
+            return None
+        self._metadata_cache = None
+        return entry.instance
 
     def get_entry(self, name: str) -> RegistryEntry[T] | None:
         """

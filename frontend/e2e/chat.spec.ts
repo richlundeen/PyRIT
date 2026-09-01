@@ -130,9 +130,9 @@ async function mockBackendAPIs(page: Page) {
 
 /** Navigate to config, set the mock target as active, then return to chat. */
 async function activateMockTarget(page: Page) {
-  // Click Configuration button in sidebar
-  await page.getByTitle("Configuration").click();
-  await expect(page.getByText("Target Configuration")).toBeVisible({ timeout: 10000 });
+  // Click Registry button in sidebar
+  await page.getByTitle("Registry").click();
+  await expect(page.getByText("Target Registry")).toBeVisible({ timeout: 10000 });
 
   // Set the mock target active
   const setActiveBtn = page.getByRole("button", { name: /set active/i });
@@ -853,8 +853,8 @@ test.describe("Target type scenarios", () => {
     });
 
     await page.goto("/");
-    await page.getByTitle("Configuration").click();
-    await expect(page.getByText("Target Configuration")).toBeVisible({ timeout: 10000 });
+    await page.getByTitle("Registry").click();
+    await expect(page.getByText("Target Registry")).toBeVisible({ timeout: 10000 });
 
     await expect(page.locator("table").getByText("OpenAIChatTarget")).toBeVisible();
     await expect(page.locator("table").getByText("OpenAIImageTarget")).toBeVisible();
@@ -878,7 +878,7 @@ test.describe("Target type scenarios", () => {
     });
 
     await page.goto("/");
-    await page.getByTitle("Configuration").click();
+    await page.getByTitle("Registry").click();
     await expect(page.getByText("dall-e-3")).toBeVisible({ timeout: 10000 });
 
     // Activate the DALL-E target (second row)

@@ -17,6 +17,7 @@ import {
   healthApi,
   versionApi,
   targetsApi,
+  convertersApi,
   attacksApi,
 } from "./api";
 
@@ -148,6 +149,26 @@ describe("api service", () => {
   });
 
   describe("targetsApi", () => {
+    it("should list target types from the registry", async () => {
+      const mockResponse = {
+        data: {
+          items: [
+            {
+              target_type: "OpenAIChatTarget",
+              parameters: [],
+              supported_auth_modes: ["api_key", "identity"],
+            },
+          ],
+        },
+      };
+      (apiClient.get as jest.Mock).mockResolvedValueOnce(mockResponse);
+
+      const result = await targetsApi.listTargetTypes();
+
+      expect(apiClient.get).toHaveBeenCalledWith("/targets/types");
+      expect(result.items[0].target_type).toBe("OpenAIChatTarget");
+    });
+
     it("should list targets with default params", async () => {
       const mockResponse = {
         data: {
@@ -209,11 +230,13 @@ describe("api service", () => {
       (apiClient.post as jest.Mock).mockResolvedValueOnce(mockResponse);
 
       const result = await targetsApi.createTarget({
+        name: "new-target",
         type: "OpenAIChatTarget",
         params: { endpoint: "https://test.openai.azure.com/" },
       });
 
       expect(apiClient.post).toHaveBeenCalledWith("/targets", {
+        name: "new-target",
         type: "OpenAIChatTarget",
         params: { endpoint: "https://test.openai.azure.com/" },
       });
@@ -225,6 +248,77 @@ describe("api service", () => {
       (apiClient.get as jest.Mock).mockRejectedValueOnce(error);
 
       await expect(targetsApi.listTargets()).rejects.toThrow("Server error");
+    });
+  });
+
+  describe("convertersApi", () => {
+    it("should list converter instances", async () => {
+      const mockResponse = {
+        data: {
+          items: [
+            {
+              converter_id: "base64-default",
+              identifier: { class_name: "Base64Converter" },
+              is_llm_based: false,
+            },
+          ],
+        },
+      };
+      (apiClient.get as jest.Mock).mockResolvedValueOnce(mockResponse);
+
+      const result = await convertersApi.listConverters();
+
+      expect(apiClient.get).toHaveBeenCalledWith("/converters");
+      expect(result.items[0].converter_id).toBe("base64-default");
+    });
+
+    it("should list converter types from registry metadata", async () => {
+      const mockResponse = {
+        data: {
+          items: [
+            {
+              converter_type: "Base64Converter",
+              parameters: [],
+              supported_input_types: ["text"],
+              supported_output_types: ["text"],
+              is_llm_based: false,
+            },
+          ],
+        },
+      };
+      (apiClient.get as jest.Mock).mockResolvedValueOnce(mockResponse);
+
+      const result = await convertersApi.listConverterTypes();
+
+      expect(apiClient.get).toHaveBeenCalledWith("/converters/types");
+      expect(result.items[0].converter_type).toBe("Base64Converter");
+    });
+
+    it("should create a named converter", async () => {
+      const request = {
+        name: "base64-default",
+        type: "Base64Converter",
+        params: {},
+      };
+      (apiClient.post as jest.Mock).mockResolvedValueOnce({
+        data: {
+          converter_id: "base64-default",
+          converter_type: "Base64Converter",
+        },
+      });
+
+      const result = await convertersApi.createConverter(request);
+
+      expect(apiClient.post).toHaveBeenCalledWith("/converters", request);
+      expect(result.converter_id).toBe("base64-default");
+    });
+
+    it("should delete a converter instance", async () => {
+      (apiClient.delete as jest.Mock).mockResolvedValueOnce({});
+
+      await convertersApi.deleteConverter("base64-default");
+
+      expect(apiClient.delete).toHaveBeenCalledWith("/converters/base64-default");
     });
   });
 

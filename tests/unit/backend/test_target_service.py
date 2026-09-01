@@ -230,43 +230,43 @@ class TestGetTargetObject:
         assert result is mock_target
 
 
-class TestListTargetCatalog:
-    """Tests for TargetService.list_target_catalog_async method."""
+class TestListTargetTypes:
+    """Tests for TargetService.list_target_types_async method."""
 
-    async def test_catalog_returns_known_target_types(self) -> None:
-        """The catalog exposes constructible target classes from the registry."""
+    async def test_types_returns_known_target_types(self) -> None:
+        """The type list exposes constructible target classes from the registry."""
         service = TargetService()
 
-        result = await service.list_target_catalog_async()
+        result = await service.list_target_types_async()
 
         target_types = [item.target_type for item in result.items]
         assert "OpenAIChatTarget" in target_types
         assert "AzureMLChatTarget" in target_types
 
-    async def test_catalog_includes_declarative_auth_facts(self) -> None:
-        """Catalog entries surface the per-class auth facts the frontend needs."""
+    async def test_types_include_declarative_auth_facts(self) -> None:
+        """Type entries surface the per-class authentication facts callers need."""
         service = TargetService()
 
-        result = await service.list_target_catalog_async()
+        result = await service.list_target_types_async()
 
         openai_entry = next(item for item in result.items if item.target_type == "OpenAIChatTarget")
         assert "api_key" in openai_entry.supported_auth_modes
         assert "identity" in openai_entry.supported_auth_modes
 
-    async def test_catalog_cold_and_warm_results_are_equal(self) -> None:
+    async def test_types_cold_and_warm_results_are_equal(self) -> None:
         service = TargetService()
 
-        cold = await service.list_target_catalog_async()
-        warm = await service.list_target_catalog_async()
+        cold = await service.list_target_types_async()
+        warm = await service.list_target_types_async()
 
         assert cold == warm
 
-    async def test_catalog_refreshes_after_runtime_class_registration(self) -> None:
+    async def test_types_refresh_after_runtime_class_registration(self) -> None:
         service = TargetService()
-        initial = await service.list_target_catalog_async()
+        initial = await service.list_target_types_async()
 
         service._registry.register_class(MockPromptTarget)
-        refreshed = await service.list_target_catalog_async()
+        refreshed = await service.list_target_types_async()
 
         assert all(item.target_type != "MockPromptTarget" for item in initial.items)
         assert any(item.target_type == "MockPromptTarget" for item in refreshed.items)
@@ -308,7 +308,7 @@ class TestListTargetCatalog:
             ),
         ],
     )
-    async def test_catalog_includes_enum_parameters(
+    async def test_types_include_enum_parameters(
         self,
         target_type: str,
         parameter_name: str,
@@ -319,7 +319,7 @@ class TestListTargetCatalog:
         """Enum parameters are exposed with their required state and allowed values."""
         service = TargetService()
 
-        result = await service.list_target_catalog_async()
+        result = await service.list_target_types_async()
 
         entry = next(item for item in result.items if item.target_type == target_type)
         parameter = next(param for param in entry.parameters if param.name == parameter_name)
@@ -336,6 +336,7 @@ class TestCreateTarget:
         service = TargetService()
 
         request = CreateTargetRequest(
+            name="invalid",
             type="NonExistentTarget",
             params={},
         )
@@ -348,20 +349,41 @@ class TestCreateTarget:
         service = TargetService()
 
         request = CreateTargetRequest(
+            name="text-target",
             type="TextTarget",
             params={},
         )
 
         result = await service.create_target_async(request=request)
 
-        assert result.target_registry_name is not None
+        assert result.target_registry_name == "text-target"
         assert result.identifier.class_name == "TextTarget"
+
+    async def test_create_target_rejects_duplicate_name_without_overwriting(self) -> None:
+        service = TargetService()
+        original = _mock_prompt_target()
+        service._registry.instances.register(original, name="shared-name")
+        request = CreateTargetRequest(name="shared-name", type="TextTarget", params={})
+
+        with pytest.raises(ValueError, match="already exists"):
+            await service.create_target_async(request=request)
+
+        assert service.get_target_object(target_registry_name="shared-name") is original
+
+    async def test_create_target_rejects_reserved_name(self) -> None:
+        service = TargetService()
+        request = CreateTargetRequest(name="types", type="TextTarget", params={})
+
+        with pytest.raises(ValueError, match="reserved"):
+            await service.create_target_async(request=request)
 
     async def test_create_target_delegates_construction_to_registry(self, sqlite_instance) -> None:
         """Every target construction path is owned by the registry."""
         service = TargetService()
         with patch.object(service._registry, "create_instance", wraps=service._registry.create_instance) as create:
-            await service.create_target_async(request=CreateTargetRequest(type="TextTarget", params={}))
+            await service.create_target_async(
+                request=CreateTargetRequest(name="text-target", type="TextTarget", params={})
+            )
 
         create.assert_called_once()
 
@@ -369,6 +391,7 @@ class TestCreateTarget:
         """A Gandalf level from the JSON request is coerced to its enum before construction."""
         service = TargetService()
         request = CreateTargetRequest(
+            name="gandalf",
             type="GandalfTarget",
             params={"level": "baseline"},
         )
@@ -382,6 +405,7 @@ class TestCreateTarget:
         """An invalid Gandalf level raises a parameter error before target construction."""
         service = TargetService()
         request = CreateTargetRequest(
+            name="gandalf",
             type="GandalfTarget",
             params={"level": "unknown"},
         )
@@ -393,6 +417,7 @@ class TestCreateTarget:
         """An explicit blob content type from JSON is coerced before target construction."""
         service = TargetService()
         request = CreateTargetRequest(
+            name="blob-target",
             type="AzureBlobStorageTarget",
             params={
                 "container_url": "https://test.blob.core.windows.net/test",
@@ -411,6 +436,7 @@ class TestCreateTarget:
         service = TargetService()
 
         request = CreateTargetRequest(
+            name="text-target",
             type="TextTarget",
             params={},
         )
@@ -427,6 +453,7 @@ class TestCreateTarget:
             service = TargetService()
 
             request = CreateTargetRequest(
+                name="chat-target",
                 type="OpenAIChatTarget",
                 params={
                     "model_name": "claude-sonnet-4-6",
@@ -446,6 +473,7 @@ class TestCreateTarget:
         service = TargetService()
 
         request = CreateTargetRequest(
+            name="chat-target",
             type="OpenAIChatTarget",
             params={
                 "model_name": "my-gpt4o-deployment",
@@ -479,6 +507,7 @@ class TestCreateTargetEntraAuth:
                 service = TargetService()
 
                 request = CreateTargetRequest(
+                    name="chat-target",
                     type="OpenAIChatTarget",
                     params={
                         "endpoint": "https://test.openai.azure.com/",
@@ -507,6 +536,7 @@ class TestCreateTargetEntraAuth:
                 service = TargetService()
 
                 request = CreateTargetRequest(
+                    name="chat-target",
                     type="OpenAIChatTarget",
                     params={
                         "endpoint": "https://test.openai.azure.com/",
@@ -541,6 +571,7 @@ class TestCreateTargetEntraAuth:
                     "api_key": "original-key",
                 }
                 request = CreateTargetRequest(
+                    name="chat-target",
                     type="OpenAIChatTarget",
                     params=dict(original_params),
                     auth_mode="identity",
@@ -563,6 +594,7 @@ class TestCreateTargetEntraAuth:
                 service = TargetService()
 
                 request = CreateTargetRequest(
+                    name="azureml-target",
                     type="AzureMLChatTarget",
                     params={"endpoint": "https://my-aml.region.inference.ml.azure.com/score"},
                     auth_mode="identity",
@@ -585,6 +617,7 @@ class TestCreateTargetEntraAuth:
             service = TargetService()
 
             request = CreateTargetRequest(
+                name="chat-target",
                 type="OpenAIChatTarget",
                 params={"endpoint": "https://api.openai.com/", "model_name": "gpt-4o"},
                 auth_mode="identity",
@@ -598,6 +631,7 @@ class TestCreateTargetEntraAuth:
         service = TargetService()
 
         request = CreateTargetRequest(
+            name="text-target",
             type="TextTarget",
             params={},
             auth_mode="identity",
@@ -627,6 +661,7 @@ class TestCreateRoundRobinTarget:
         service._registry.instances.register(target_b, name="target-b")
 
         rr_request = CreateTargetRequest(
+            name="round-robin",
             type="RoundRobinTarget",
             params={"targets": ["target-a", "target-b"], "weights": [2, 1]},
         )
@@ -645,6 +680,7 @@ class TestCreateRoundRobinTarget:
         service._registry.instances.register(MockPromptTarget(), name="only-one")
 
         rr_request = CreateTargetRequest(
+            name="round-robin",
             type="RoundRobinTarget",
             params={"targets": ["only-one"]},
         )
@@ -657,6 +693,7 @@ class TestCreateRoundRobinTarget:
         service = TargetService()
 
         rr_request = CreateTargetRequest(
+            name="round-robin",
             type="RoundRobinTarget",
             params={"targets": ["does-not-exist-a", "does-not-exist-b"]},
         )

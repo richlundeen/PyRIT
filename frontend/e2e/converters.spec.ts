@@ -5,7 +5,7 @@ import { makeTarget } from "./_targets";
 // Mock data
 // ---------------------------------------------------------------------------
 
-const MOCK_CATALOG = {
+const MOCK_CONVERTER_TYPES = {
   items: [
     {
       converter_type: "Base64Converter",
@@ -16,7 +16,7 @@ const MOCK_CATALOG = {
           name: "encoding_func",
           type_name: "Literal['b64encode', 'urlsafe_b64encode']",
           required: false,
-          default_value: "b64encode",
+          default: "b64encode",
           choices: ["b64encode", "urlsafe_b64encode"],
           description: "The base64 encoding function to use.",
         },
@@ -33,7 +33,7 @@ const MOCK_CATALOG = {
           name: "caesar_offset",
           type_name: "int",
           required: true,
-          default_value: null,
+          default: null,
           choices: null,
           description: "Offset for caesar cipher.",
         },
@@ -65,6 +65,32 @@ const MOCK_CATALOG = {
       is_llm_based: true,
       description: "Translates prompts using an LLM.",
     },
+    {
+      converter_type: "PersuasionConverter",
+      supported_input_types: ["text"],
+      supported_output_types: ["text"],
+      parameters: [
+        {
+          name: "converter_target",
+          type_name: "PromptTarget",
+          required: true,
+          default: null,
+          choices: null,
+          reference_type: "target",
+          description: "The target used to rewrite prompts.",
+        },
+        {
+          name: "persuasion_technique",
+          type_name: "str",
+          required: true,
+          default: null,
+          choices: ["logical_appeal", "expert_endorsement"],
+          description: "The persuasion technique to apply.",
+        },
+      ],
+      is_llm_based: true,
+      description: "Rewrites prompts using a persuasion technique.",
+    },
   ],
 };
 
@@ -93,18 +119,41 @@ const IMAGE_OUTPUT_CONVERTERS: Record<string, string> = {
  */
 async function mockBackendAPIs(page: Page) {
   let accumulatedMessages: Record<string, unknown>[] = [];
-  // Track the converter type for each created converter instance so the
+  // Track the converter type for each registered converter instance so the
   // preview mock can decide between text and image_path output.
-  const converterTypeById: Record<string, string> = {};
+  const converterTypeById: Record<string, string> = Object.fromEntries(
+    MOCK_CONVERTER_TYPES.items.map((item) => [item.converter_type, item.converter_type]),
+  );
+  let registeredConverters = MOCK_CONVERTER_TYPES.items.map((item) => ({
+    converter_id: item.converter_type,
+    identifier: {
+      class_name: item.converter_type,
+      class_module: `pyrit.converter.${item.converter_type}`,
+      hash: `${item.converter_type}-hash`,
+      pyrit_version: "0.0.0",
+      supported_input_types: item.supported_input_types,
+      supported_output_types: item.supported_output_types,
+    },
+    is_llm_based: item.is_llm_based,
+    description: item.description,
+  }));
 
-  // ── Converter-specific routes ──────────────────────────────────────────
-
-  // Converter catalog
-  await page.route(/\/api\/converters\/catalog/, async (route) => {
+  await page.route(/\/api\/auth\/config$/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(MOCK_CATALOG),
+      body: JSON.stringify({ auth_enabled: false }),
+    });
+  });
+
+  // ── Converter-specific routes ──────────────────────────────────────────
+
+  // Converter class metadata from ConverterRegistry
+  await page.route(/\/api\/converters\/types/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(MOCK_CONVERTER_TYPES),
     });
   });
 
@@ -113,35 +162,34 @@ async function mockBackendAPIs(page: Page) {
     if (route.request().method() === "POST") {
       const body = JSON.parse(route.request().postData() ?? "{}");
       const converterIds: string[] = body.converter_ids ?? [];
-      const converterType = converterTypeById[converterIds[0] ?? ""] ?? "";
+      let currentValue = body.original_value ?? "";
+      let currentDataType = body.original_value_data_type ?? "text";
+      const steps = converterIds.map((converterId) => {
+        const converterType = converterTypeById[converterId] ?? "";
+        const inputValue = currentValue;
+        const inputDataType = currentDataType;
+        currentValue = IMAGE_OUTPUT_CONVERTERS[converterType]
+          ?? Buffer.from(currentValue).toString("base64");
+        currentDataType = IMAGE_OUTPUT_CONVERTERS[converterType] ? "image_path" : "text";
+        return {
+          converter_id: converterId,
+          converter_type: converterType,
+          input_value: inputValue,
+          input_data_type: inputDataType,
+          output_value: currentValue,
+          output_data_type: currentDataType,
+        };
+      });
 
-      // Image-output converters emit a file path the frontend renders via
-      // /api/media → triggers the convertedFileChip + inline preview branch.
-      if (IMAGE_OUTPUT_CONVERTERS[converterType]) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            original_value: body.original_value,
-            original_value_data_type: body.original_value_data_type ?? "text",
-            converted_value: IMAGE_OUTPUT_CONVERTERS[converterType],
-            converted_value_data_type: "image_path",
-            steps: [],
-          }),
-        });
-        return;
-      }
-
-      const converted = Buffer.from(body.original_value ?? "").toString("base64");
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
           original_value: body.original_value,
           original_value_data_type: body.original_value_data_type ?? "text",
-          converted_value: converted,
-          converted_value_data_type: "text",
-          steps: [],
+          converted_value: currentValue,
+          converted_value_data_type: currentDataType,
+          steps,
         }),
       });
     }
@@ -151,20 +199,59 @@ async function mockBackendAPIs(page: Page) {
   await page.route(/\/api\/converters$/, async (route) => {
     if (route.request().method() === "POST") {
       const body = JSON.parse(route.request().postData() ?? "{}");
-      const converterId = `mock-converter-${body.type}`;
+      const converterId = body.name;
       converterTypeById[converterId] = body.type;
+      const converterType = MOCK_CONVERTER_TYPES.items.find((item) => item.converter_type === body.type);
+      registeredConverters.push({
+        converter_id: converterId,
+        identifier: {
+          class_name: body.type,
+          class_module: `pyrit.converter.${body.type}`,
+          hash: `${converterId}-hash`,
+          pyrit_version: "0.0.0",
+          supported_input_types: converterType?.supported_input_types ?? [],
+          supported_output_types: converterType?.supported_output_types ?? [],
+        },
+        is_llm_based: converterType?.is_llm_based ?? false,
+        description: converterType?.description,
+      });
       await route.fulfill({
         status: 201,
         contentType: "application/json",
         body: JSON.stringify({
           converter_id: converterId,
-          converter_type: body.type,
-          display_name: null,
+          identifier: {
+            class_name: body.type,
+            class_module: `pyrit.converter.${body.type}`,
+            hash: `${converterId}-hash`,
+            pyrit_version: "0.0.0",
+            supported_input_types: converterType?.supported_input_types ?? [],
+            supported_output_types: converterType?.supported_output_types ?? [],
+          },
+          is_llm_based: converterType?.is_llm_based ?? false,
+          description: converterType?.description,
         }),
+      });
+    } else if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ items: registeredConverters }),
       });
     } else {
       await route.continue();
     }
+  });
+
+  await page.route(/\/api\/converters\/[^/]+$/, async (route) => {
+    if (route.request().method() !== "DELETE") {
+      await route.fallback();
+      return;
+    }
+    const converterId = decodeURIComponent(route.request().url().split("/").pop() ?? "");
+    registeredConverters = registeredConverters.filter((item) => item.converter_id !== converterId);
+    delete converterTypeById[converterId];
+    await route.fulfill({ status: 204 });
   });
 
   // Media route — serves the generated image referenced by the preview
@@ -407,10 +494,10 @@ async function mockBackendAPIs(page: Page) {
   });
 }
 
-/** Navigate to config, set the mock target as active, then return to chat. */
+/** Navigate to the target registry, set the mock target as active, then return to chat. */
 async function activateMockTarget(page: Page) {
-  await page.getByTitle("Configuration").click();
-  await expect(page.getByText("Target Configuration")).toBeVisible({ timeout: 10000 });
+  await page.getByTitle("Registry").click();
+  await expect(page.getByText("Target Registry")).toBeVisible({ timeout: 10000 });
 
   const setActiveBtn = page.getByRole("button", { name: /set active/i });
   await expect(setActiveBtn).toBeVisible({ timeout: 5000 });
@@ -439,6 +526,43 @@ async function selectConverter(page: Page, converterName: string) {
 // Tests
 // ---------------------------------------------------------------------------
 
+test.describe("Converter Registry", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockBackendAPIs(page);
+    await page.goto("/registry/converters");
+  });
+
+  test("should add and remove a named converter instance", async ({ page }) => {
+    await expect(page.getByRole("heading", { name: "Converter Registry" })).toBeVisible();
+    await page.getByRole("button", { name: "New Converter" }).click();
+    await page.getByRole("combobox", { name: "Converter type" }).click();
+    await page.getByTestId("converter-type-option-CaesarConverter").click();
+    await page.getByLabel("Registry Name").fill("caesar-custom");
+    await page.getByLabel("caesar_offset").fill("5");
+    await page.getByRole("button", { name: "Add Converter" }).click();
+
+    await expect(page.getByText("caesar-custom")).toBeVisible();
+    await page.getByRole("button", { name: "Remove caesar-custom" }).click();
+    await page.getByRole("button", { name: "Remove", exact: true }).click();
+
+    await expect(page.getByText("caesar-custom")).not.toBeVisible();
+  });
+
+  test("should create an LLM converter with a registered target", async ({ page }) => {
+    await page.getByRole("button", { name: "New Converter" }).click();
+    await page.getByRole("combobox", { name: "Converter type" }).click();
+    await page.getByTestId("converter-type-option-PersuasionConverter").click();
+    await expect(page.getByRole("dialog")).toContainText("Rewrites prompts using a persuasion technique.");
+    await expect(page.getByRole("dialog")).toContainText("LLM");
+    await page.getByLabel("Registry Name").fill("persuasion-custom");
+    await page.getByLabel("converter_target *").selectOption("mock-openai-chat");
+    await page.getByLabel("persuasion_technique *").selectOption("logical_appeal");
+    await page.getByRole("button", { name: "Add Converter" }).click();
+
+    await expect(page.getByText("persuasion-custom")).toBeVisible();
+  });
+});
+
 test.describe("Converter Panel", () => {
   test.beforeEach(async ({ page }) => {
     await mockBackendAPIs(page);
@@ -446,17 +570,21 @@ test.describe("Converter Panel", () => {
     await activateMockTarget(page);
   });
 
-  test("should open converter panel and display converter catalog", async ({ page }) => {
+  test("should open converter panel and display registered converters", async ({ page }) => {
     // Click the converter toggle button
     await page.getByTestId("toggle-converter-panel-btn").click();
 
     // Panel should appear with combobox
     await expect(page.getByTestId("converter-panel")).toBeVisible({ timeout: 5000 });
+    expect(
+      await page.getByTestId("converter-panel").evaluate((element) => element.getBoundingClientRect().width),
+    ).toBeGreaterThanOrEqual(780);
     const combobox = page.getByTestId("converter-panel-select");
     await expect(combobox).toBeVisible();
 
     // Open dropdown — converters should be listed
     await combobox.click();
+    await expect(page.getByTestId("create-converter-option")).toBeVisible();
     await expect(page.getByTestId("converter-option-Base64Converter")).toBeVisible();
     await expect(page.getByTestId("converter-option-CaesarConverter")).toBeVisible();
     await expect(page.getByTestId("converter-option-TranslationConverter")).toBeVisible();
@@ -469,22 +597,29 @@ test.describe("Converter Panel", () => {
     // Select Base64Converter
     await selectConverter(page, "Base64Converter");
 
+    await expect(page.getByTestId("converter-input-value")).toHaveValue("hello");
     // Description should be visible
-    await expect(page.getByText("Converter that encodes text to base64 format.")).toBeVisible();
+    await expect(
+      page.getByTestId("converter-item-Base64Converter")
+        .getByText("Converter that encodes text to base64 format."),
+    ).toBeVisible();
 
-    // Auto-preview should fire (non-LLM text converter)
-    await expect(page.getByTestId("converter-preview-result")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("use-converted-btn")).toBeDisabled();
+    await expect(page.getByTestId("converter-preview-result")).toHaveCount(0);
+    await page.getByTestId("converter-preview-btn").click();
+    await expect(page.getByTestId("converter-preview-result")).toHaveValue("aGVsbG8=");
   });
 
   test("should apply converted value and send message with original+converted sections", async ({ page }) => {
     // Type text BEFORE opening the converter panel
     await page.getByTestId("chat-input").fill("hello");
 
-    // Select converter and wait for auto-preview
+    // Select converter and preview the pipeline.
     await selectConverter(page, "Base64Converter");
+    await page.getByTestId("converter-preview-btn").click();
     await expect(page.getByTestId("converter-preview-result")).toBeVisible({ timeout: 10000 });
 
-    // Click "Use Converted Value"
+    // Add the converted value.
     await page.getByTestId("use-converted-btn").click();
 
     // Original badge should appear in input area
@@ -509,7 +644,8 @@ test.describe("Converter Panel", () => {
     // Type text BEFORE opening panel
     await page.getByTestId("chat-input").fill("hello");
     await selectConverter(page, "Base64Converter");
-    await expect(page.getByTestId("use-converted-btn")).toBeVisible({ timeout: 10000 });
+    await page.getByTestId("converter-preview-btn").click();
+    await expect(page.getByTestId("use-converted-btn")).toBeEnabled({ timeout: 10000 });
     await page.getByTestId("use-converted-btn").click();
 
     // Close converter panel before sending
@@ -527,7 +663,7 @@ test.describe("Converter Panel", () => {
     await expect(page.getByText("Base64Converter")).toBeVisible({ timeout: 10000 });
   });
 
-  test("should show validation error when required parameter is missing", async ({ page }) => {
+  test("should select an already configured converter without showing constructor fields", async ({ page }) => {
     // Type text
     // Type text BEFORE opening panel
     await page.getByTestId("chat-input").fill("hello");
@@ -535,15 +671,33 @@ test.describe("Converter Panel", () => {
     // Select CaesarConverter (has required caesar_offset param)
     await selectConverter(page, "CaesarConverter");
 
-    // Parameters section should be visible with empty required field
-    await expect(page.getByText("Parameters")).toBeVisible();
-    await expect(page.getByTestId("param-caesar_offset")).toBeVisible();
+    await expect(page.getByTestId("converter-item-CaesarConverter")).toBeVisible();
+    await expect(page.getByTestId("converter-params")).toHaveCount(0);
+  });
 
-    // Click Preview without filling required param
+  test("should keep the picker available for an ordered converter chain", async ({ page }) => {
+    await page.getByTestId("chat-input").fill("hello");
+    await page.getByTestId("toggle-converter-panel-btn").click();
+    const combobox = page.getByTestId("converter-panel-select");
+
+    await combobox.click();
+    await page.getByTestId("converter-option-Base64Converter").click();
+    await expect(page.getByTestId("converter-item-Base64Converter")).toBeVisible();
+
+    await combobox.click();
+    await page.getByTestId("converter-option-CaesarConverter").click();
+
+    await expect(page.getByTestId("converter-item-Base64Converter")).toBeVisible();
+    await expect(page.getByTestId("converter-item-CaesarConverter")).toBeVisible();
+    await expect(page.getByTestId("converter-stage-output-0").locator("textarea")).toHaveValue("");
+    await expect(page.getByTestId("converter-stage-output-1").locator("textarea")).toHaveValue("");
+
     await page.getByTestId("converter-preview-btn").click();
 
-    // Red "Required" validation text should appear
-    await expect(page.getByText("Required")).toBeVisible();
+    await expect(page.getByTestId("converter-stage-output-0").locator("textarea")).toHaveValue("aGVsbG8=");
+    await expect(page.getByTestId("converter-stage-output-1").locator("textarea")).toHaveValue(
+      "YUdWc2JHOD0=",
+    );
   });
 
   test("should only show text-input converters when no media is attached", async ({ page }) => {
@@ -578,7 +732,7 @@ test.describe("Converter Panel", () => {
     // Select AddImageTextConverter (text input → image_path output)
     await selectConverter(page, "AddImageTextConverter");
 
-    // Auto-preview only fires for text-output converters, so click Preview
+    // Preview explicitly.
     await page.getByTestId("converter-preview-btn").click();
     await expect(page.getByTestId("converter-preview-result")).toBeVisible({ timeout: 10000 });
 

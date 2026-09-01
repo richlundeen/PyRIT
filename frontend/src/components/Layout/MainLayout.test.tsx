@@ -26,7 +26,7 @@ jest.mock("../Sidebar/Navigation", () => {
   }) => {
     return (
       <div data-testid="navigation" data-current-view={currentView}>
-        <button onClick={() => onNavigate("config")}>Config</button>
+        <button onClick={() => onNavigate("registry")}>Registry</button>
       </div>
     );
   };

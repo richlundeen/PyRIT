@@ -89,7 +89,7 @@ _PROMPT_TARGET_FORBIDDEN = [
     "transformers",
 ]
 
-_TARGET_CATALOG_FORBIDDEN = [
+_DISCOVERY_FORBIDDEN = [
     "huggingface_hub",
     "torch",
     "transformers",
@@ -103,7 +103,7 @@ class TestImportGuards:
         """Importing the private classifier must not import local inference frameworks."""
         loaded = _check_forbidden_imports(
             import_statement=("from pyrit.score._classifiers.hugging_face import _HuggingFaceSequenceClassifier"),
-            forbidden=_TARGET_CATALOG_FORBIDDEN,
+            forbidden=_DISCOVERY_FORBIDDEN,
         )
         assert not loaded, f"Hugging Face classifier import loaded inference frameworks: {loaded}."
 
@@ -115,7 +115,7 @@ class TestImportGuards:
                 "metadata = ScorerRegistry.get_registry_singleton().get_all_registered_class_metadata()\n"
                 "assert any(item.class_name == 'RobloxPiiScorer' for item in metadata)"
             ),
-            forbidden=_TARGET_CATALOG_FORBIDDEN,
+            forbidden=_DISCOVERY_FORBIDDEN,
         )
         assert not loaded, f"Scorer catalog discovery loaded inference frameworks: {loaded}."
 
@@ -160,7 +160,7 @@ class TestImportGuards:
             f"Ensure heavy subclass imports use __getattr__ lazy loading in __init__.py."
         )
 
-    def test_target_catalog_discovery_does_not_load_inference_frameworks(self) -> None:
+    def test_target_type_discovery_does_not_load_inference_frameworks(self) -> None:
         """Full target discovery includes Hugging Face without importing its runtime frameworks."""
         loaded = _check_forbidden_imports(
             import_statement=(
@@ -168,9 +168,9 @@ class TestImportGuards:
                 "metadata = TargetRegistry.get_registry_singleton().get_all_registered_class_metadata()\n"
                 "assert any(item.class_name == 'HuggingFaceChatTarget' for item in metadata)"
             ),
-            forbidden=_TARGET_CATALOG_FORBIDDEN,
+            forbidden=_DISCOVERY_FORBIDDEN,
         )
         assert not loaded, (
-            f"Target catalog discovery loaded inference frameworks: {loaded}. "
+            f"Target type discovery loaded inference frameworks: {loaded}. "
             f"Move target-specific runtime imports to construction or execution paths."
         )

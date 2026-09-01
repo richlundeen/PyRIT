@@ -62,6 +62,13 @@ jest.mock("./services/api", () => ({
     listTargets: jest.fn(),
     getTarget: jest.fn(),
   },
+  convertersApi: {
+    listConverters: jest.fn().mockResolvedValue({ items: [] }),
+    listConverterTypes: jest.fn().mockResolvedValue({ items: [] }),
+    createConverter: jest.fn(),
+    deleteConverter: jest.fn(),
+    previewConversion: jest.fn(),
+  },
   versionApi: {
     getVersion: jest.fn().mockResolvedValue({ version: "1.0.0" }),
   },
@@ -100,8 +107,8 @@ jest.mock("./components/Layout/MainLayout", () => {
         <button onClick={() => onNavigate("home")} data-testid="nav-home">
           Home
         </button>
-        <button onClick={() => onNavigate("config")} data-testid="nav-config">
-          Config
+        <button onClick={() => onNavigate("registry")} data-testid="nav-registry">
+          Registry
         </button>
         <button onClick={() => onNavigate("chat")} data-testid="nav-chat">
           Chat
@@ -251,7 +258,7 @@ jest.mock("./components/History/AttackHistory", () => {
             Start attack
           </button>
         ) : (
-          <button onClick={() => onNavigate("config")} data-testid="history-configure-target">
+          <button onClick={() => onNavigate("registry")} data-testid="history-configure-target">
             Configure target
           </button>
         )}
@@ -299,8 +306,8 @@ jest.mock("./components/Home/Home", () => {
       <div data-testid="home-view">
         <span data-testid="home-has-target">{activeTarget ? "yes" : "no"}</span>
         <span data-testid="home-labels-json">{JSON.stringify(labels)}</span>
-        <button onClick={() => onNavigate("config")} data-testid="home-go-config">
-          Go to config
+        <button onClick={() => onNavigate("registry")} data-testid="home-go-registry">
+          Go to registry
         </button>
         <button
           onClick={() => onOpenAttack("ar-home-attack")}
@@ -320,7 +327,7 @@ jest.mock("./components/Home/Home", () => {
 
 describe("App", () => {
   // App reads the active view from the URL, so every render needs a router.
-  // initialPath lets a test deep-link straight to a view (e.g. "/config").
+  // initialPath lets a test deep-link straight to a view.
   function renderApp(initialPath = "/") {
     return render(
       <ThemeProvider>
@@ -359,13 +366,34 @@ describe("App", () => {
   });
 
   it("renders the view named by the initial URL", () => {
+    renderApp("/registry/targets");
+
+    expect(screen.getByTestId("main-layout")).toHaveAttribute(
+      "data-current-view",
+      "registry"
+    );
+    expect(screen.getByTestId("target-config")).toBeInTheDocument();
+  });
+
+  it("renders the converter registry from its direct URL", async () => {
+    renderApp("/registry/converters");
+
+    expect(screen.getByTestId("main-layout")).toHaveAttribute(
+      "data-current-view",
+      "registry"
+    );
+    expect(await screen.findByRole("heading", { name: "Converter Registry" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Converters" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("removes the old config route", () => {
     renderApp("/config");
 
     expect(screen.getByTestId("main-layout")).toHaveAttribute(
       "data-current-view",
-      "config"
+      "home"
     );
-    expect(screen.getByTestId("target-config")).toBeInTheDocument();
+    expect(screen.getByTestId("home-view")).toBeInTheDocument();
   });
 
   it("renders the history view when deep-linked to /history", () => {
@@ -400,22 +428,22 @@ describe("App", () => {
     expect(screen.getByTestId("chat-window")).toBeInTheDocument();
   });
 
-  it("switches to config view", () => {
+  it("switches to the target registry view", () => {
     renderApp();
 
-    fireEvent.click(screen.getByTestId("nav-config"));
+    fireEvent.click(screen.getByTestId("nav-registry"));
 
     expect(screen.getByTestId("main-layout")).toHaveAttribute(
       "data-current-view",
-      "config"
+      "registry"
     );
     expect(screen.getByTestId("target-config")).toBeInTheDocument();
   });
 
-  it("switches back to chat from config", () => {
+  it("switches back to chat from the registry", () => {
     renderApp();
 
-    fireEvent.click(screen.getByTestId("nav-config"));
+    fireEvent.click(screen.getByTestId("nav-registry"));
     expect(screen.getByTestId("target-config")).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("nav-chat"));
@@ -435,7 +463,7 @@ describe("App", () => {
   it("retains and trusts the active target when creating an attack", () => {
     renderApp();
 
-    fireEvent.click(screen.getByTestId("nav-config"));
+    fireEvent.click(screen.getByTestId("nav-registry"));
     fireEvent.click(screen.getByTestId("set-target"));
     fireEvent.click(screen.getByTestId("nav-chat"));
     fireEvent.click(screen.getByTestId("set-conversation"));
@@ -488,15 +516,15 @@ describe("App", () => {
     expect(screen.getByTestId("conversation-id")).toHaveTextContent("none");
   });
 
-  it("sets active target from config page and passes to chat", () => {
+  it("sets an active target from the registry and passes it to chat", () => {
     renderApp();
 
     // Switch to chat and confirm no target initially
     fireEvent.click(screen.getByTestId("nav-chat"));
     expect(screen.getByTestId("has-target")).toHaveTextContent("no");
 
-    // Switch to config and set target
-    fireEvent.click(screen.getByTestId("nav-config"));
+    // Switch to the registry and set a target.
+    fireEvent.click(screen.getByTestId("nav-registry"));
     fireEvent.click(screen.getByTestId("set-target"));
 
     // Switch back to chat — target should be present
@@ -516,20 +544,20 @@ describe("App", () => {
     expect(screen.getByTestId("attack-history")).toBeInTheDocument();
   });
 
-  it("navigates from empty history to config when no target is active", () => {
+  it("navigates from empty history to the registry when no target is active", () => {
     renderApp("/history");
 
     expect(screen.getByTestId("history-has-target")).toHaveTextContent("no");
     fireEvent.click(screen.getByTestId("history-configure-target"));
 
-    expect(screen.getByTestId("main-layout")).toHaveAttribute("data-current-view", "config");
+    expect(screen.getByTestId("main-layout")).toHaveAttribute("data-current-view", "registry");
     expect(screen.getByTestId("target-config")).toBeInTheDocument();
   });
 
   it("navigates from empty history to chat when a target is active", () => {
     renderApp();
 
-    fireEvent.click(screen.getByTestId("nav-config"));
+    fireEvent.click(screen.getByTestId("nav-registry"));
     fireEvent.click(screen.getByTestId("set-target"));
     fireEvent.click(screen.getByTestId("nav-history"));
 
@@ -573,14 +601,14 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByTestId("conversation-id")).toHaveTextContent("home-conv-1"));
   });
 
-  it("navigates to config from the home view", () => {
+  it("navigates to the registry from the home view", () => {
     renderApp();
 
-    fireEvent.click(screen.getByTestId("home-go-config"));
+    fireEvent.click(screen.getByTestId("home-go-registry"));
 
     expect(screen.getByTestId("main-layout")).toHaveAttribute(
       "data-current-view",
-      "config"
+      "registry"
     );
     expect(screen.getByTestId("target-config")).toBeInTheDocument();
   });
@@ -770,7 +798,7 @@ describe("App", () => {
     renderApp();
 
     // Set a target first
-    fireEvent.click(screen.getByTestId("nav-config"));
+    fireEvent.click(screen.getByTestId("nav-registry"));
     fireEvent.click(screen.getByTestId("set-target"));
     fireEvent.click(screen.getByTestId("nav-chat"));
 
@@ -891,7 +919,7 @@ describe("App", () => {
     ).toBe("success");
 
     // Leave history for another view, then come back via the nav button.
-    fireEvent.click(screen.getByTestId("nav-config"));
+    fireEvent.click(screen.getByTestId("nav-registry"));
     expect(screen.getByTestId("target-config")).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("nav-history"));
@@ -1353,7 +1381,7 @@ describe("App", () => {
     const user = userEvent.setup();
     renderApp();
 
-    await user.click(screen.getByTestId("nav-config"));
+    await user.click(screen.getByTestId("nav-registry"));
     await user.click(screen.getByTestId("set-target"));
     await user.click(screen.getByTestId("nav-history"));
     await user.click(screen.getByTestId("open-attack"));
@@ -1388,7 +1416,7 @@ describe("App", () => {
     const user = userEvent.setup();
     renderApp();
 
-    await user.click(screen.getByTestId("nav-config"));
+    await user.click(screen.getByTestId("nav-registry"));
     await user.click(screen.getByTestId("set-target"));
     await user.click(screen.getByTestId("nav-history"));
     await user.click(screen.getByTestId("open-attack"));
@@ -1421,7 +1449,7 @@ describe("App", () => {
     const user = userEvent.setup();
     renderApp();
 
-    await user.click(screen.getByTestId("nav-config"));
+    await user.click(screen.getByTestId("nav-registry"));
     await user.click(screen.getByTestId("set-target"));
     await user.click(screen.getByTestId("nav-history"));
     await user.click(screen.getByTestId("open-attack"));

@@ -112,7 +112,7 @@ async function routeResponsiveTargetData(
   page: Page,
   targets: FlatTarget[]
 ): Promise<void> {
-  await page.route(/\/api\/targets\/catalog(?:\?.*)?$/, async (route) => {
+  await page.route(/\/api\/targets\/types(?:\?.*)?$/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -156,8 +156,8 @@ async function expectWithin(
 /** Navigate to the config view. */
 async function goToConfig(page: Page) {
   await page.goto("/");
-  await page.getByTitle("Configuration").click();
-  await expect(page.getByText("Target Configuration")).toBeVisible({ timeout: 10000 });
+  await page.getByTitle("Registry").click();
+  await expect(page.getByText("Target Registry")).toBeVisible({ timeout: 10000 });
 }
 
 async function selectTargetType(
@@ -177,7 +177,7 @@ async function selectTargetType(
 // Tests
 // ---------------------------------------------------------------------------
 
-test.describe("Target Configuration Page", () => {
+test.describe("Target Registry Page", () => {
   test("should show loading state then target list", async ({ page }) => {
     await page.route(/\/api\/targets/, async (route) => {
       // Small delay to see spinner
@@ -276,7 +276,7 @@ test.describe("Create Target Dialog", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.route(/\/api\/targets\/catalog(?:\?.*)?$/, async (route) => {
+    await page.route(/\/api\/targets\/types(?:\?.*)?$/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -422,7 +422,7 @@ test.describe("Create Target Dialog", () => {
   });
 });
 
-test.describe("Responsive Target Configuration", () => {
+test.describe("Responsive Target Registry", () => {
   for (const viewport of RESPONSIVE_VIEWPORTS) {
     test(`should contain configuration actions at ${viewport.name} width`, async ({
       page,
@@ -552,7 +552,7 @@ test.describe("Target Config ↔ Chat Navigation", () => {
     await expect(page.getByTestId("no-target-banner")).toBeVisible();
 
     // Go to config, set a target
-    await page.getByTitle("Configuration").click();
+    await page.getByTitle("Registry").click();
     await expect(page.getByText("gpt-4o")).toBeVisible({ timeout: 10000 });
     await page.getByRole("button", { name: /set active/i }).first().click();
 

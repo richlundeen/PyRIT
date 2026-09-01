@@ -411,7 +411,7 @@ export default function ChatWindow({
         if (!dataType) continue
         const hasMatchingPiece = pieces.some(piece => piece.data_type === dataType)
         if (hasMatchingPiece) {
-          allConverterIds.push(conv.converterInstanceId)
+          allConverterIds.push(...conv.converterInstanceIds)
         }
       }
 
@@ -881,7 +881,7 @@ export default function ChatWindow({
           onUseAsTemplate={handleUseAsTemplate}
           attackOperator={isOperatorLocked ? attackOperator ?? undefined : undefined}
           noTargetSelected={!activeTarget}
-          onConfigureTarget={() => onNavigate?.('config')}
+          onConfigureTarget={() => onNavigate?.('registry')}
           onToggleConverterPanel={() => setIsConverterPanelOpen(prev => !prev)}
           isConverterPanelOpen={isConverterPanelOpen}
           onInputChange={setChatInputText}

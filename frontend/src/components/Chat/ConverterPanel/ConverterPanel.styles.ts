@@ -7,6 +7,7 @@ export const useConverterPanelStyles = makeStyles({
     flexDirection: 'row',
     height: '100%',
     flexShrink: 0,
+    maxWidth: 'calc(100vw - 56px)',
   },
   root: {
     display: 'flex',
@@ -57,6 +58,9 @@ export const useConverterPanelStyles = makeStyles({
     overflowY: 'auto',
     flex: 1,
   },
+  inputSection: {
+    flexShrink: 0,
+  },
   hintText: {
     color: tokens.colorNeutralForeground3,
   },
@@ -81,6 +85,47 @@ export const useConverterPanelStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalS,
+    flex: 1,
+  },
+  converterPicker: {
+    width: '100%',
+  },
+  converterPickerListbox: {
+    maxHeight: 'min(32rem, 60vh)',
+    overflowY: 'auto',
+  },
+  createOption: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    width: '100%',
+    gap: tokens.spacingHorizontalS,
+    whiteSpace: 'normal',
+  },
+  registeredOption: {
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    minWidth: 0,
+    gap: tokens.spacingVerticalXXS,
+    whiteSpace: 'normal',
+  },
+  optionText: {
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 0,
+    gap: tokens.spacingVerticalXXS,
+  },
+  optionHeader: {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    minWidth: 0,
+    gap: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalS}`,
+  },
+  optionType: {
+    color: tokens.colorNeutralForeground3,
+    fontFamily: tokens.fontFamilyMonospace,
   },
   groupHeader: {
     fontWeight: tokens.fontWeightSemibold as unknown as string,
@@ -109,6 +154,22 @@ export const useConverterPanelStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
+  },
+  previewButton: {
+    alignSelf: 'flex-start',
+  },
+  stageOutput: {
+    marginTop: tokens.spacingVerticalS,
+  },
+  addConvertedButton: {
+    alignSelf: 'stretch',
+    marginTop: 'auto',
+  },
+  converterCardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalS,
   },
   converterName: {
     minWidth: 0,

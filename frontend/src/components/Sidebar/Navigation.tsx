@@ -23,7 +23,7 @@ import { useTheme } from '../../hooks/useTheme'
 import type { ThemeMode } from '../../hooks/useTheme'
 import { useNavigationStyles } from './Navigation.styles'
 
-export type ViewName = 'home' | 'chat' | 'history' | 'config' | 'initializers'
+export type ViewName = 'home' | 'chat' | 'history' | 'registry' | 'initializers'
 
 interface NavigationProps {
   currentView: ViewName
@@ -96,13 +96,13 @@ export default function Navigation({ currentView, onNavigate, onOpenFeedback }: 
 
         <Button
           className={styles.navButton}
-          data-active={currentView === 'config'}
+          data-active={currentView === 'registry'}
           appearance="subtle"
           icon={<SettingsRegular />}
-          title="Configuration"
-          aria-label="Configuration"
-          aria-current={currentView === 'config' ? 'page' : undefined}
-          onClick={() => onNavigate('config')}
+          title="Registry"
+          aria-label="Registry"
+          aria-current={currentView === 'registry' ? 'page' : undefined}
+          onClick={() => onNavigate('registry')}
         />
 
         <Button

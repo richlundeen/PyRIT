@@ -21,9 +21,9 @@ from pyrit.backend.mappers.target_mappers import target_object_to_instance
 from pyrit.backend.models.common import PaginationInfo
 from pyrit.backend.models.targets import (
     CreateTargetRequest,
-    TargetCatalogEntry,
-    TargetCatalogResponse,
     TargetListResponse,
+    TargetTypeEntry,
+    TargetTypeResponse,
 )
 from pyrit.models.catalog.target import TargetInstance
 from pyrit.registry import TargetRegistry
@@ -39,6 +39,8 @@ class TargetService:
     parameter coercion, reference resolution, and construction. Endpoint
     validation remains owned by the target classes.
     """
+
+    RESERVED_NAMES = frozenset({"types"})
 
     def __init__(self) -> None:
         """Initialize the target service."""
@@ -125,7 +127,7 @@ class TargetService:
         """
         return self._registry.instances.get(target_registry_name)
 
-    async def list_target_catalog_async(self) -> TargetCatalogResponse:
+    async def list_target_types_async(self) -> TargetTypeResponse:
         """
         List all available target types from the target class registry.
 
@@ -136,11 +138,11 @@ class TargetService:
         not this service.
 
         Returns:
-            TargetCatalogResponse containing all available target classes.
+            TargetTypeResponse containing all available target classes.
         """
         metadata_items = await asyncio.to_thread(self._registry.get_all_registered_class_metadata)
-        items: list[TargetCatalogEntry] = [
-            TargetCatalogEntry(
+        items: list[TargetTypeEntry] = [
+            TargetTypeEntry(
                 target_type=metadata.class_name,
                 parameters=[p for p in metadata.parameters if p.is_string_coercible],
                 supported_auth_modes=cast("list[Literal['api_key', 'identity']]", list(metadata.supported_auth_modes)),
@@ -148,7 +150,7 @@ class TargetService:
             )
             for metadata in metadata_items
         ]
-        return TargetCatalogResponse(items=items)
+        return TargetTypeResponse(items=items)
 
     async def create_target_async(self, *, request: CreateTargetRequest) -> TargetInstance:
         """
@@ -169,15 +171,20 @@ class TargetService:
             TargetInstance with the new target's details.
 
         Raises:
-            ValueError: If the target type is not registered or identity auth is
-                requested but unsupported by the target type. Construction errors
-                (unknown params, incompatible inner targets, unrecognized identity
-                endpoints) are raised by the registry / target classes.
+            ValueError: If the target type is not registered, the registry name is
+                reserved or duplicated, or identity auth is requested but unsupported
+                by the target type. Construction errors (unknown params, incompatible
+                inner targets, unrecognized identity endpoints) are raised by the
+                registry / target classes.
         """
         if request.type not in self._registry:
             raise ValueError(
                 f"Target type '{request.type}' not found. Available types: {self._registry.get_class_names()}"
             )
+        if request.name in self.RESERVED_NAMES:
+            raise ValueError(f"Target instance name '{request.name}' is reserved")
+        if request.name in self._registry.instances:
+            raise ValueError(f"Target instance '{request.name}' already exists")
 
         target_cls = self._registry.get_class(request.type)
         params: dict[str, Any] = dict(request.params)
@@ -190,10 +197,8 @@ class TargetService:
 
         target_obj = self._registry.create_instance(request.type, **params)
 
-        self._registry.instances.register(target_obj)
-
-        target_registry_name = target_obj.get_identifier().unique_name
-        return self._build_instance_from_object(target_registry_name=target_registry_name, target_obj=target_obj)
+        self._registry.instances.register(target_obj, name=request.name)
+        return self._build_instance_from_object(target_registry_name=request.name, target_obj=target_obj)
 
 
 @lru_cache(maxsize=1)

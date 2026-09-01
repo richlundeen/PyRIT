@@ -66,8 +66,8 @@ class Parameter(BaseModel):
 
     ``reference``, when set, marks the parameter as a registry reference: its value
     is supplied *by name* and resolved to a registered instance by the registry
-    layer (``Parameter`` itself never resolves references). It is also excluded
-    from serialization.
+    layer (``Parameter`` itself never resolves references). The live reference is
+    excluded from serialization; ``reference_type`` exposes its component family.
 
     ``coerce_value`` and ``validate`` are the only public behaviors; all coercion
     branching lives behind them so callers never touch a free function.
@@ -164,6 +164,12 @@ class Parameter(BaseModel):
     def is_list(self) -> bool:
         """True when the parameter accepts a list of values (e.g. ``list[str]``)."""
         return get_origin(self.param_type) is list
+
+    @computed_field
+    @property
+    def reference_type(self) -> str | None:
+        """Registry component family this parameter references, or None."""
+        return self.reference.component_type.value if self.reference is not None else None
 
     @field_serializer("default")
     def _serialize_default(self, value: Any) -> str | list[str] | None:

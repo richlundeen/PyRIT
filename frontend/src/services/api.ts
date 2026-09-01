@@ -7,10 +7,11 @@ import type {
   ApplyInitializerResponse,
   TargetInstance,
   TargetListResponse,
-  TargetCatalogResponse,
-  ConverterCatalogResponse,
+  TargetTypeListResponse,
+  ConverterTypeListResponse,
   ConverterInstance,
   ConverterListResponse,
+  ConverterPreviewResponse,
   CreateTargetRequest,
   InitializerSettingsResponse,
   ListRegisteredInitializersResponse,
@@ -149,8 +150,8 @@ export const versionApi = {
 }
 
 export const targetsApi = {
-  listTargetCatalog: async (): Promise<TargetCatalogResponse> => {
-    const response = await apiClient.get('/targets/catalog')
+  listTargetTypes: async (): Promise<TargetTypeListResponse> => {
+    const response = await apiClient.get('/targets/types')
     return response.data
   },
 
@@ -173,8 +174,8 @@ export const targetsApi = {
 }
 
 export const convertersApi = {
-  listConverterCatalog: async (): Promise<ConverterCatalogResponse> => {
-    const response = await apiClient.get('/converters/catalog')
+  listConverterTypes: async (): Promise<ConverterTypeListResponse> => {
+    const response = await apiClient.get('/converters/types')
     return response.data
   },
 
@@ -188,12 +189,16 @@ export const convertersApi = {
     return response.data
   },
 
-  createConverter: async (request: { type: string; params?: Record<string, unknown> }): Promise<{ converter_id: string; converter_type: string }> => {
+  createConverter: async (request: { name: string; type: string; params?: Record<string, unknown> }): Promise<ConverterInstance> => {
     const response = await apiClient.post('/converters', request)
     return response.data
   },
 
-  previewConversion: async (request: { original_value: string; converter_ids: string[]; original_value_data_type?: string }): Promise<{ converted_value: string; converted_value_data_type?: string }> => {
+  deleteConverter: async (converterId: string): Promise<void> => {
+    await apiClient.delete(`/converters/${encodeURIComponent(converterId)}`)
+  },
+
+  previewConversion: async (request: { original_value: string; converter_ids: string[]; original_value_data_type?: string }): Promise<ConverterPreviewResponse> => {
     const response = await apiClient.post('/converters/preview', request)
     return response.data
   },

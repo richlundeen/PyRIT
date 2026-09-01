@@ -7,7 +7,7 @@ export const PIECE_TYPE_TO_DATA_TYPE: Record<string, string> = {
 }
 
 export interface PieceConversion {
-  converterInstanceId: string
+  converterInstanceIds: string[]
   convertedValue: string
   originalValue: string
   /** Input piece type the conversion came from (e.g. 'text', 'image'). */

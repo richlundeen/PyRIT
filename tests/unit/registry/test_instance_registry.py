@@ -171,6 +171,30 @@ class TestGet:
         assert registry.get_entry("missing") is None
 
 
+class TestUnregister:
+    """Tests for unregistering instances."""
+
+    def test_unregister_removes_and_returns_instance(self, registry: DefaultInstanceRegistry[_TestItem]) -> None:
+        item = _item("value1")
+        registry.register(item, name="name1")
+
+        assert registry.unregister("name1") is item
+        assert registry.get("name1") is None
+        assert len(registry) == 0
+
+    def test_unregister_missing_returns_none(self, registry: DefaultInstanceRegistry[_TestItem]) -> None:
+        assert registry.unregister("missing") is None
+
+    def test_unregister_invalidates_metadata_cache(self, registry: DefaultInstanceRegistry[_TestItem]) -> None:
+        registry.register(_item("value1"), name="name1")
+        registry.register(_item("value2"), name="name2")
+        assert len(registry.list_metadata()) == 2
+
+        registry.unregister("name1")
+
+        assert len(registry.list_metadata()) == 1
+
+
 class TestGetNamesAndAllInstances:
     """Tests for get_names and get_all_instances."""
 

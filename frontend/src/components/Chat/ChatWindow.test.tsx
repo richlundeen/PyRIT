@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { FluentProvider, webLightTheme } from "@fluentui/react-components";
 import ChatWindow from "./ChatWindow";
 import { makeTarget } from "@/test-utils/targetFixtures";
-import { Message, MessageAttachment, TargetCapabilities, TargetInfo, TargetInstance } from "../../types";
+import { ConverterInstance, Message, MessageAttachment, TargetCapabilities, TargetInfo, TargetInstance } from "../../types";
 import { attacksApi, convertersApi } from "../../services/api";
 import * as messageMapper from "../../utils/messageMapper";
 
@@ -35,10 +35,11 @@ jest.mock("../../services/api", () => ({
     changeMainConversation: jest.fn(),
   },
   convertersApi: {
-    listConverterCatalog: jest.fn(),
     listConverters: jest.fn(),
+    listConverterTypes: jest.fn(),
     getConverter: jest.fn(),
     createConverter: jest.fn(),
+    deleteConverter: jest.fn(),
     previewConversion: jest.fn(),
   },
   labelsApi: {
@@ -80,6 +81,26 @@ const mockTarget: TargetInstance = makeTarget({
   endpoint: "https://api.openai.com",
   model_name: "gpt-4",
 });
+
+function makeConverterInstance(
+  converterId: string,
+  className: string,
+  supportedInputTypes = ["text"],
+  supportedOutputTypes = ["text"],
+): ConverterInstance {
+  return {
+    converter_id: converterId,
+    identifier: {
+      class_name: className,
+      class_module: `pyrit.converter.${className}`,
+      hash: `${converterId}-hash`,
+      pyrit_version: "0.0.0",
+      supported_input_types: supportedInputTypes,
+      supported_output_types: supportedOutputTypes,
+    },
+    is_llm_based: false,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Helpers to build mock backend responses
@@ -290,9 +311,7 @@ describe("ChatWindow Integration", () => {
     mockedConvertersApi.listConverters.mockResolvedValue({
       items: [],
     });
-    mockedConvertersApi.listConverterCatalog.mockResolvedValue({
-      items: [],
-    });
+    mockedConvertersApi.listConverterTypes.mockResolvedValue({ items: [] });
   });
 
   afterEach(() => {
@@ -2832,15 +2851,8 @@ describe("ChatWindow Integration", () => {
   });
 
   it("should load and display converters in the converter panel", async () => {
-    mockedConvertersApi.listConverterCatalog.mockResolvedValue({
-      items: [
-        {
-          converter_type: "Base64Converter",
-          supported_input_types: ["text"],
-          supported_output_types: ["text"],
-          parameters: [],
-        },
-      ],
+    mockedConvertersApi.listConverters.mockResolvedValue({
+      items: [makeConverterInstance("base64-default", "Base64Converter")],
     });
 
     render(
@@ -2860,8 +2872,8 @@ describe("ChatWindow Integration", () => {
     await waitFor(() => {
       expect(screen.getByTestId("converter-panel-list")).toBeInTheDocument();
       expect(screen.getByTestId("converter-panel-select")).toBeInTheDocument();
-      expect(screen.getByTestId("converter-preview-btn")).toBeInTheDocument();
-      expect(screen.getByText("Converted output will appear here.")).toBeInTheDocument();
+      expect(screen.getByTestId("converter-input-value")).toBeInTheDocument();
+      expect(screen.queryByTestId("converter-preview-btn")).not.toBeInTheDocument();
     });
 
     // Select a converter
@@ -2871,33 +2883,16 @@ describe("ChatWindow Integration", () => {
     await userEvent.click(option);
 
     await waitFor(() => {
-      expect(screen.getByTestId("converter-item-Base64Converter")).toBeInTheDocument();
-      expect(screen.getByText("In:")).toBeInTheDocument();
-      expect(screen.getByText("Out:")).toBeInTheDocument();
-      expect(screen.getByTestId("converter-output")).toBeInTheDocument();
-      // No params section when parameters is empty
+      expect(screen.getByTestId("converter-item-base64-default")).toBeInTheDocument();
+      expect(screen.getByTestId("converter-stage-output-0")).toBeInTheDocument();
+      expect(screen.getByTestId("converter-preview-btn")).toBeInTheDocument();
       expect(screen.queryByTestId("converter-params")).not.toBeInTheDocument();
     });
   });
 
-  it("should show parameter form when converter has parameters", async () => {
-    mockedConvertersApi.listConverterCatalog.mockResolvedValue({
-      items: [
-        {
-          converter_type: "Base64Converter",
-          supported_input_types: ["text"],
-          supported_output_types: ["text"],
-          parameters: [
-            {
-              name: "encoding_func",
-              type_name: "str",
-              required: false,
-              default: "b64encode",
-              choices: ["b64encode", "urlsafe_b64encode"],
-            },
-          ],
-        },
-      ],
+  it("should not show constructor parameters for a registered converter", async () => {
+    mockedConvertersApi.listConverters.mockResolvedValue({
+      items: [makeConverterInstance("base64-configured", "Base64Converter")],
     });
 
     render(
@@ -2914,36 +2909,31 @@ describe("ChatWindow Integration", () => {
 
     await userEvent.click(screen.getByTestId("toggle-converter-panel-btn"));
 
-    // Select the converter that has parameters
     const input = screen.getByRole("combobox");
     await userEvent.click(input);
     const option = await screen.findByRole("option", { name: /Base64Converter/ });
     await userEvent.click(option);
 
-    await waitFor(() => {
-      expect(screen.getByTestId("converter-params")).toBeInTheDocument();
-      expect(screen.getByTestId("param-encoding_func")).toBeInTheDocument();
-      expect(screen.getByText("Parameters")).toBeInTheDocument();
-    });
+    expect(screen.queryByTestId("converter-params")).not.toBeInTheDocument();
   });
 
   it("should preview conversion when Preview button is clicked", async () => {
-    mockedConvertersApi.listConverterCatalog.mockResolvedValue({
-      items: [
-        {
-          converter_type: "Base64Converter",
-          supported_input_types: ["text"],
-          supported_output_types: ["text"],
-          parameters: [],
-        },
-      ],
-    });
-    mockedConvertersApi.createConverter.mockResolvedValue({
-      converter_id: "test-conv-id",
-      converter_type: "Base64Converter",
+    mockedConvertersApi.listConverters.mockResolvedValue({
+      items: [makeConverterInstance("test-conv-id", "Base64Converter")],
     });
     mockedConvertersApi.previewConversion.mockResolvedValue({
+      original_value: "hello",
+      original_value_data_type: "text",
       converted_value: "aGVsbG8=",
+      converted_value_data_type: "text",
+      steps: [{
+        converter_id: "test-conv-id",
+        converter_type: "Base64Converter",
+        input_value: "hello",
+        input_data_type: "text",
+        output_value: "aGVsbG8=",
+        output_data_type: "text",
+      }],
     });
 
     render(
@@ -2983,10 +2973,7 @@ describe("ChatWindow Integration", () => {
       expect(screen.getByText("aGVsbG8=")).toBeInTheDocument();
     });
 
-    expect(mockedConvertersApi.createConverter).toHaveBeenCalledWith({
-      type: "Base64Converter",
-      params: {},
-    });
+    expect(mockedConvertersApi.createConverter).not.toHaveBeenCalled();
     expect(mockedConvertersApi.previewConversion).toHaveBeenCalledWith({
       original_value: "hello",
       converter_ids: ["test-conv-id"],
@@ -2994,21 +2981,11 @@ describe("ChatWindow Integration", () => {
     });
   });
 
-  it("should switch converter details when a different dropdown option is selected", async () => {
-    mockedConvertersApi.listConverterCatalog.mockResolvedValue({
+  it("should keep converter details when another dropdown option is selected", async () => {
+    mockedConvertersApi.listConverters.mockResolvedValue({
       items: [
-        {
-          converter_type: "Base64Converter",
-          supported_input_types: ["text"],
-          supported_output_types: ["text"],
-          parameters: [],
-        },
-        {
-          converter_type: "CharSwapConverter",
-          supported_input_types: ["text"],
-          supported_output_types: ["text"],
-          parameters: [],
-        },
+        makeConverterInstance("base64-default", "Base64Converter"),
+        makeConverterInstance("char-swap-default", "CharSwapConverter"),
       ],
     });
 
@@ -3033,7 +3010,7 @@ describe("ChatWindow Integration", () => {
     await userEvent.click(firstOption);
 
     await waitFor(() => {
-      expect(screen.getByTestId("converter-item-Base64Converter")).toBeInTheDocument();
+      expect(screen.getByTestId("converter-item-base64-default")).toBeInTheDocument();
     });
 
     // Click combobox to open the dropdown listbox
@@ -3044,7 +3021,8 @@ describe("ChatWindow Integration", () => {
     await userEvent.click(option);
 
     await waitFor(() => {
-      expect(screen.getByTestId("converter-item-CharSwapConverter")).toBeInTheDocument();
+      expect(screen.getByTestId("converter-item-base64-default")).toBeInTheDocument();
+      expect(screen.getByTestId("converter-item-char-swap-default")).toBeInTheDocument();
     });
   });
 
@@ -3231,7 +3209,7 @@ describe("ChatWindow Integration", () => {
   it("should open converter panel when toggle button is clicked and pass props", async () => {
     mockedAttacksApi.getMessages.mockResolvedValue({ messages: [] });
     mockedMapper.backendMessagesToFrontend.mockReturnValue([]);
-    mockedConvertersApi.listConverterCatalog.mockResolvedValue({ items: [] });
+    mockedConvertersApi.listConverters.mockResolvedValue({ items: [] });
 
     render(
       <TestWrapper>
@@ -3266,7 +3244,7 @@ describe("ChatWindow Integration", () => {
   });
 
   it("should pass input text and attachments to converter panel", async () => {
-    mockedConvertersApi.listConverterCatalog.mockResolvedValue({ items: [] });
+    mockedConvertersApi.listConverters.mockResolvedValue({ items: [] });
 
     render(
       <TestWrapper>
@@ -3293,7 +3271,7 @@ describe("ChatWindow Integration", () => {
   });
 
   it("should handle onClearConversion and onConvertedValueChange from ChatInputArea", async () => {
-    mockedConvertersApi.listConverterCatalog.mockResolvedValue({ items: [] });
+    mockedConvertersApi.listConverters.mockResolvedValue({ items: [] });
 
     render(
       <TestWrapper>
@@ -3332,23 +3310,24 @@ describe("ChatWindow Integration", () => {
   // -----------------------------------------------------------------------
 
   it("should render converted-file chip and synthesize file attachment when a text→file converter is used", async () => {
-    mockedConvertersApi.listConverterCatalog.mockResolvedValue({
+    mockedConvertersApi.listConverters.mockResolvedValue({
       items: [
-        {
-          converter_type: "PDFConverter",
-          supported_input_types: ["text"],
-          supported_output_types: ["binary_path"],
-          parameters: [],
-        },
+        makeConverterInstance("conv-pdf", "PDFConverter", ["text"], ["binary_path"]),
       ],
     });
-    mockedConvertersApi.createConverter.mockResolvedValue({
-      converter_id: "conv-pdf",
-      converter_type: "PDFConverter",
-    });
     mockedConvertersApi.previewConversion.mockResolvedValue({
+      original_value: "make a pdf",
+      original_value_data_type: "text",
       converted_value: "/tmp/results/report.pdf",
       converted_value_data_type: "binary_path",
+      steps: [{
+        converter_id: "conv-pdf",
+        converter_type: "PDFConverter",
+        input_value: "make a pdf",
+        input_data_type: "text",
+        output_value: "/tmp/results/report.pdf",
+        output_data_type: "binary_path",
+      }],
     });
     mockedAttacksApi.createAttack.mockResolvedValue({
       attack_result_id: "ar-pdf",
@@ -3382,7 +3361,7 @@ describe("ChatWindow Integration", () => {
     const option = await screen.findByRole("option", { name: /PDFConverter/ });
     await userEvent.click(option);
 
-    // 3. text→file converters do not auto-preview; click Preview explicitly
+    // 3. Preview the text-to-file converter explicitly.
     await waitFor(() => {
       expect(screen.getByTestId("converter-preview-btn")).toBeInTheDocument();
     });
@@ -3424,23 +3403,22 @@ describe("ChatWindow Integration", () => {
   });
 
   it("should auto-clear a stale text→text conversion when the typed text diverges from the original", async () => {
-    mockedConvertersApi.listConverterCatalog.mockResolvedValue({
-      items: [
-        {
-          converter_type: "Base64Converter",
-          supported_input_types: ["text"],
-          supported_output_types: ["text"],
-          parameters: [],
-        },
-      ],
-    });
-    mockedConvertersApi.createConverter.mockResolvedValue({
-      converter_id: "conv-b64-stale",
-      converter_type: "Base64Converter",
+    mockedConvertersApi.listConverters.mockResolvedValue({
+      items: [makeConverterInstance("conv-b64-stale", "Base64Converter")],
     });
     mockedConvertersApi.previewConversion.mockResolvedValue({
+      original_value: "hello",
+      original_value_data_type: "text",
       converted_value: "aGVsbG8=",
       converted_value_data_type: "text",
+      steps: [{
+        converter_id: "conv-b64-stale",
+        converter_type: "Base64Converter",
+        input_value: "hello",
+        input_data_type: "text",
+        output_value: "aGVsbG8=",
+        output_data_type: "text",
+      }],
     });
 
     render(

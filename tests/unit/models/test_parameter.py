@@ -84,6 +84,7 @@ class TestParameterSerialization:
             "required": False,
             "choices": None,
             "is_list": False,
+            "reference_type": None,
         }
 
     def test_excludes_live_only_fields(self) -> None:
@@ -92,6 +93,15 @@ class TestParameterSerialization:
         assert "param_type" not in dumped
         assert "reference" not in dumped
         assert "destination" not in dumped
+
+    def test_registry_reference_serializes_component_type(self) -> None:
+        dumped = Parameter(
+            name="converter_target",
+            description="d",
+            reference=RegistryReference(component_type=ComponentType.TARGET),
+        ).model_dump()
+
+        assert dumped["reference_type"] == "target"
 
     def test_required_default_serializes_to_none(self) -> None:
         p = Parameter(name="mode", description="d", default=REQUIRED_VALUE, param_type=Literal["a", "b"])

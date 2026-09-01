@@ -134,6 +134,7 @@ export interface TargetListResponse {
 }
 
 export interface CreateTargetRequest {
+  name: string
   type: string
   params: Record<string, unknown>
   auth_mode?: 'api_key' | 'identity'
@@ -221,6 +222,8 @@ export interface ConverterIdentifier {
 export interface ConverterInstance {
   converter_id: string
   identifier: ConverterIdentifier
+  is_llm_based?: boolean
+  description?: string | null
 }
 
 export interface ConverterListResponse {
@@ -234,10 +237,11 @@ export interface Parameter {
   default?: string | null
   choices?: string[] | null
   is_list?: boolean
+  reference_type?: 'target' | 'converter' | 'scorer' | 'scenario' | null
   description?: string | null
 }
 
-export interface ConverterCatalogEntry {
+export interface ConverterTypeEntry {
   converter_type: string
   supported_input_types: string[]
   supported_output_types: string[]
@@ -246,19 +250,36 @@ export interface ConverterCatalogEntry {
   description?: string | null
 }
 
-export interface ConverterCatalogResponse {
-  items: ConverterCatalogEntry[]
+export interface ConverterTypeListResponse {
+  items: ConverterTypeEntry[]
 }
 
-export interface TargetCatalogEntry {
+export interface ConverterPreviewStep {
+  converter_id: string
+  converter_type: string
+  input_value: string
+  input_data_type: string
+  output_value: string
+  output_data_type: string
+}
+
+export interface ConverterPreviewResponse {
+  original_value: string
+  original_value_data_type: string
+  converted_value: string
+  converted_value_data_type: string
+  steps: ConverterPreviewStep[]
+}
+
+export interface TargetTypeEntry {
   target_type: string
   parameters: Parameter[]
   supported_auth_modes: ('api_key' | 'identity')[]
   description?: string | null
 }
 
-export interface TargetCatalogResponse {
-  items: TargetCatalogEntry[]
+export interface TargetTypeListResponse {
+  items: TargetTypeEntry[]
 }
 
 // --- Attacks ---

@@ -50,8 +50,9 @@ if TYPE_CHECKING:
         ConverterInstanceListResponse,
         ConverterPreviewRequest,
         ConverterPreviewResponse,
+        ConverterTypeEntry,
+        ConverterTypeResponse,
         CreateConverterRequest,
-        CreateConverterResponse,
         PreviewStep,
     )
     from pyrit.backend.models.datasets import DatasetInfo, DatasetListResponse
@@ -92,8 +93,9 @@ _LAZY_EXPORTS: dict[str, str | tuple[str, str | None]] = {
     "ConverterInstanceListResponse": "pyrit.backend.models.converters",
     "ConverterPreviewRequest": "pyrit.backend.models.converters",
     "ConverterPreviewResponse": "pyrit.backend.models.converters",
+    "ConverterTypeEntry": "pyrit.backend.models.converters",
+    "ConverterTypeResponse": "pyrit.backend.models.converters",
     "CreateConverterRequest": "pyrit.backend.models.converters",
-    "CreateConverterResponse": "pyrit.backend.models.converters",
     "PreviewStep": "pyrit.backend.models.converters",
     "DatasetInfo": "pyrit.backend.models.datasets",
     "DatasetListResponse": "pyrit.backend.models.datasets",

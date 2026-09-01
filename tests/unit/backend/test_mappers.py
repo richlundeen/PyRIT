@@ -1918,13 +1918,20 @@ class TestConverterObjectToInstance:
         )
         converter_obj.get_identifier.return_value = identifier
 
-        result = converter_object_to_instance("c-1", converter_obj)
+        result = converter_object_to_instance(
+            converter_id="c-1",
+            converter_obj=converter_obj,
+            is_llm_based=False,
+            description="Encodes text as Base64.",
+        )
 
         assert result.converter_id == "c-1"
         assert result.identifier.class_name == "Base64Converter"
         assert result.identifier.supported_input_types == ["text"]
         assert result.identifier.supported_output_types == ["text"]
         assert result.identifier.params["param1"] == "value1"
+        assert result.is_llm_based is False
+        assert result.description == "Encodes text as Base64."
 
     def test_none_input_output_types_stay_none(self) -> None:
         """Test that absent supported types stay None on the identifier."""
@@ -1935,11 +1942,17 @@ class TestConverterObjectToInstance:
         )
         converter_obj.get_identifier.return_value = identifier
 
-        result = converter_object_to_instance("c-1", converter_obj)
+        result = converter_object_to_instance(
+            converter_id="c-1",
+            converter_obj=converter_obj,
+            is_llm_based=True,
+            description=None,
+        )
 
         assert result.identifier.supported_input_types is None
         assert result.identifier.supported_output_types is None
         assert result.identifier.params == {}
+        assert result.is_llm_based is True
 
 
 # ============================================================================
