@@ -865,8 +865,8 @@ class AttackService:
         Args:
             existing: Converter identifiers already recorded on the attack result.
             additions: Converter identifiers used by the new message.
+
         Returns:
-            list[ConverterIdentifier]: Aggregate converter identifiers in first-use order.
             list[ConverterIdentifier]: Aggregate converter identifiers in first-use order.
         """
         merged = list(existing)
