@@ -11,7 +11,11 @@ import TargetConfig from './components/Config/TargetConfig'
 import ConverterRegistry from './components/Registry/ConverterRegistry'
 import RegistryLayout from './components/Registry/RegistryLayout'
 import Initializers from './components/Initializers/Initializers'
+import Configuration from './components/Configuration/Configuration'
 import AttackHistory from './components/History/AttackHistory'
+import ScenarioCatalog from './components/Scenarios/ScenarioCatalog'
+import ScenarioDetail from './components/Scenarios/ScenarioDetail'
+import ScenarioRunStarted from './components/Scenarios/ScenarioRunStarted'
 import FeedbackDialog from './components/Feedback/FeedbackDialog'
 import type { HistoryFilters } from './components/History/historyFilters'
 import { ConnectionBanner } from './components/ConnectionBanner'
@@ -29,7 +33,7 @@ import {
   targetModelName,
   targetType,
 } from './utils/targetIdentity'
-import { attacksApi, versionApi } from './services/api'
+import { attacksApi, authApi, versionApi } from './services/api'
 import { toApiError } from './services/errors'
 import { useTour } from './hooks/useTour'
 
@@ -42,12 +46,22 @@ const VIEW_PATHS: Record<ViewName, string> = {
   history: '/history',
   registry: '/registry/targets',
   initializers: '/initializers',
+  scenarios: '/scanner',
+  configuration: '/config',
 }
 
-/** Resolves the active view from a URL path, defaulting to home for unknown paths. */
+/**
+ * Resolves the active view from a URL path, defaulting to home for unknown
+ * paths. Scanner routes are prefix-matched (`/scanner/...` and
+ * `/scenario-history/...`) since they carry a path parameter rather than a
+ * single canonical `VIEW_PATHS` entry.
+ */
 function viewFromPath(pathname: string): ViewName {
   if (pathname.startsWith('/registry')) {
     return 'registry'
+  }
+  if (pathname === VIEW_PATHS.scenarios || pathname.startsWith(`${VIEW_PATHS.scenarios}/`) || pathname.startsWith('/scenario-history/')) {
+    return 'scenarios'
   }
   const match = (Object.entries(VIEW_PATHS) as [ViewName, string][]).find(
     ([, path]) => path === pathname,
@@ -111,6 +125,21 @@ function App() {
   const routeAttackId = conversationMatch?.params.attackId ?? attackMatch?.params.attackId ?? null
   const routeConversationId = conversationMatch?.params.conversationId ?? null
   const currentView: ViewName = routeAttackId !== null ? 'chat' : viewFromPath(location.pathname)
+  const [canManageConfiguration, setCanManageConfiguration] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    authApi.getAccess()
+      .then((access) => {
+        if (!cancelled) setCanManageConfiguration(access.isAdmin)
+      })
+      .catch(() => {
+        if (!cancelled) setCanManageConfiguration(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Read once, before the effect below can overwrite what the user picked.
   const [storedLabels] = useState(readStoredGlobalLabels)
@@ -430,6 +459,7 @@ function App() {
             currentView={currentView}
             onNavigate={handleNavigate}
             onOpenFeedback={() => setFeedbackOpen(true)}
+            canManageConfiguration={canManageConfiguration}
             onStartTour={startTour}
           >
             <Routes>
@@ -471,6 +501,19 @@ function App() {
                 <Route path="converters" element={<ConverterRegistry />} />
               </Route>
               <Route path="/initializers" element={<Initializers />} />
+              <Route path="/scanner" element={<ScenarioCatalog />} />
+              <Route
+                path="/scanner/:scenarioName"
+                element={
+                  <ScenarioDetail
+                    activeTarget={activeTarget}
+                    labels={globalLabels}
+                    onNavigate={handleNavigate}
+                  />
+                }
+              />
+              <Route path="/scenario-history/:scenarioResultId" element={<ScenarioRunStarted />} />
+              <Route path="/config" element={<Configuration />} />
               <Route
                 path="/history"
                 element={

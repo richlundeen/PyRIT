@@ -23,6 +23,7 @@ if TYPE_CHECKING:
         AttackSummary,
         ConversationMessagesResponse,
         ConversationSummary,
+        ConverterConfigurationRequest,
         ConverterOptionsResponse,
         CreateAttackRequest,
         CreateAttackResponse,
@@ -56,7 +57,10 @@ if TYPE_CHECKING:
         PreviewStep,
     )
     from pyrit.backend.models.datasets import DatasetInfo, DatasetListResponse
-    from pyrit.backend.models.initializers import ListRegisteredInitializersResponse, RegisterInitializerRequest
+    from pyrit.backend.models.initializers import (
+        ListRegisteredInitializersResponse,
+        RegisterInitializerRequest,
+    )
     from pyrit.backend.models.scenarios import ListRegisteredScenariosResponse, ScenarioRunListResponse
     from pyrit.backend.models.targets import CreateTargetRequest, TargetListResponse
 
@@ -72,6 +76,7 @@ _LAZY_EXPORTS: dict[str, str | tuple[str, str | None]] = {
     "UpdateMainConversationResponse": "pyrit.backend.models.attacks",
     "ConversationMessagesResponse": "pyrit.backend.models.attacks",
     "ConversationSummary": "pyrit.backend.models.attacks",
+    "ConverterConfigurationRequest": "pyrit.backend.models.attacks",
     "ConverterOptionsResponse": "pyrit.backend.models.attacks",
     "CreateAttackRequest": "pyrit.backend.models.attacks",
     "CreateAttackResponse": "pyrit.backend.models.attacks",

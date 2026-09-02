@@ -30,6 +30,7 @@ if TYPE_CHECKING:
         ScenarioRunSizeComponent,
         ScenarioRunSizeEstimate,
         ScenarioRunSizeEstimateRequest,
+        ScenarioTechniqueSummary,
     )
     from pyrit.models.conversation_stats import ConversationStats
     from pyrit.models.embeddings import EmbeddingData, EmbeddingResponse, EmbeddingSupport, EmbeddingUsageInformation
@@ -117,14 +118,19 @@ if TYPE_CHECKING:
     )
     from pyrit.models.score import (
         Condition,
+        ContentEntryScorable,
         ContentScorable,
         MatchesObjective,
         MessageScorable,
         Scorable,
+        ScorableUnion,
         Score,
+        ScoreStatus,
         ScoreType,
         ScoringExpectation,
+        UndeterminedScoreError,
         UnvalidatedScore,
+        scorable_from_dict,
     )
     from pyrit.models.seeds import (
         AttackSeedGroup,
@@ -185,6 +191,7 @@ _LAZY_EXPORTS: dict[str, str] = {
     "ConversationRetryReason": "pyrit.models.messages.conversation_retry",
     "ConversationStats": "pyrit.models.conversation_stats",
     "ConversationType": "pyrit.models.messages.conversation_reference",
+    "ContentEntryScorable": "pyrit.models.score",
     "ContentScorable": "pyrit.models.score",
     "construct_response_from_request": "pyrit.models.messages.conversations",
     "display_choices": "pyrit.models.parameter",
@@ -233,7 +240,9 @@ _LAZY_EXPORTS: dict[str, str] = {
     "REGISTRY_NAME_PATTERN": "pyrit.models.identifiers",
     "ScaleDescription": "pyrit.models.harm_definition",
     "Scorable": "pyrit.models.score",
+    "ScorableUnion": "pyrit.models.score",
     "Score": "pyrit.models.score",
+    "ScoreStatus": "pyrit.models.score",
     "ScoreType": "pyrit.models.score",
     "ScoringExpectation": "pyrit.models.score",
     "ScenarioEvaluationIdentifier": "pyrit.models.identifiers",
@@ -246,6 +255,7 @@ _LAZY_EXPORTS: dict[str, str] = {
     "ScenarioRunSizeComponent": "pyrit.models.catalog",
     "ScenarioRunSizeEstimate": "pyrit.models.catalog",
     "ScenarioRunSizeEstimateRequest": "pyrit.models.catalog",
+    "ScenarioTechniqueSummary": "pyrit.models.catalog",
     "ScenarioResult": "pyrit.models.results.scenario_result",
     "ScenarioRunState": "pyrit.models.results.scenario_result",
     "SCENARIO_RUN_PLAN_METADATA_KEY": "pyrit.models.scenario_progress",
@@ -280,9 +290,11 @@ _LAZY_EXPORTS: dict[str, str] = {
     "TOKEN_USAGE_METADATA_PREFIX": "pyrit.models.target",
     "TokenUsage": "pyrit.models.target",
     "ToolCall": "pyrit.models.messages.chat_message",
+    "UndeterminedScoreError": "pyrit.models.score",
     "UnvalidatedScore": "pyrit.models.score",
     "read_usage_int": "pyrit.models.target",
     "read_usage_value": "pyrit.models.target",
+    "scorable_from_dict": "pyrit.models.score",
     "validate_registry_name": "pyrit.models.identifiers",
     "RetryEvent": "pyrit.models.retry_event",
 }

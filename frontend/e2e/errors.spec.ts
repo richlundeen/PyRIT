@@ -166,7 +166,7 @@ async function mockAllAPIs(
   });
 }
 
-/** Navigate to config, set mock target active, return to chat. */
+/** Navigate to targets, set mock target active, return to chat. */
 async function activateMockTarget(page: Page) {
   await page.getByTitle("Registry").click();
   await expect(page.getByText("Target Registry")).toBeVisible({

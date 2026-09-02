@@ -59,6 +59,13 @@ interface ParameterInputProps {
   onBrowse: () => void
 }
 
+function parameterDefaultValue(parameter: Parameter): string {
+  if (Array.isArray(parameter.default)) {
+    return parameter.default.join(', ')
+  }
+  return parameter.default ?? ''
+}
+
 function ParameterInput({
   parameter,
   referenceOptions,
@@ -90,7 +97,7 @@ function ParameterInput({
   }
 
   if (parameter.type_name === 'bool') {
-    const checked = (value || parameter.default || 'false').toLowerCase() === 'true'
+    const checked = (value || parameterDefaultValue(parameter) || 'false').toLowerCase() === 'true'
     return (
       <Field label={label} validationMessage={showError ? 'Required' : undefined}>
         <Switch
@@ -105,7 +112,7 @@ function ParameterInput({
   if (parameter.choices?.length) {
     return (
       <Field label={label} validationMessage={showError ? 'Required' : undefined}>
-        <Select value={value || parameter.default || ''} onChange={(_, data) => onChange(data.value)}>
+        <Select value={value || parameterDefaultValue(parameter)} onChange={(_, data) => onChange(data.value)}>
           {parameter.required && !parameter.default && <option value="">Select a value</option>}
           {parameter.choices.map((choice) => (
             <option key={choice} value={choice}>{choice}</option>
@@ -129,7 +136,7 @@ function ParameterInput({
           <Input
             className={styles.fileInput}
             value={value}
-            placeholder={parameter.default ?? 'Select a file'}
+            placeholder={parameterDefaultValue(parameter) || 'Select a file'}
             onChange={(_, data) => onChange(data.value)}
           />
           <Button type="button" onClick={onBrowse}>Browse</Button>
@@ -137,7 +144,7 @@ function ParameterInput({
       ) : (
         <Input
           value={value}
-          placeholder={parameter.default ?? undefined}
+          placeholder={parameterDefaultValue(parameter) || undefined}
           onChange={(_, data) => onChange(data.value)}
         />
       )}
@@ -253,7 +260,7 @@ export default function CreateConverterDialog({
       Object.fromEntries(
         (typeEntry?.parameters ?? [])
           .filter((parameter) => parameter.default != null)
-          .map((parameter) => [parameter.name, parameter.default ?? '']),
+          .map((parameter) => [parameter.name, parameterDefaultValue(parameter)]),
       ),
     )
     setShowValidation(false)

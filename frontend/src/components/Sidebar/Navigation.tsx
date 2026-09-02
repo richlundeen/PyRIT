@@ -14,6 +14,7 @@ import {
   SettingsRegular,
   HistoryRegular,
   PersonFeedbackRegular,
+  ScriptRegular,
   WrenchRegular,
   OpenRegular,
   WeatherMoonRegular,
@@ -23,12 +24,20 @@ import { useTheme } from '../../hooks/useTheme'
 import type { ThemeMode } from '../../hooks/useTheme'
 import { useNavigationStyles } from './Navigation.styles'
 
-export type ViewName = 'home' | 'chat' | 'history' | 'registry' | 'initializers'
+export type ViewName =
+  | 'home'
+  | 'chat'
+  | 'history'
+  | 'registry'
+  | 'initializers'
+  | 'configuration'
+  | 'scenarios'
 
 interface NavigationProps {
   currentView: ViewName
   onNavigate: (view: ViewName) => void
   onOpenFeedback: () => void
+  canManageConfiguration: boolean
 }
 
 const THEME_MENU_NAME = 'theme'
@@ -40,7 +49,12 @@ const THEME_LABELS: Record<ThemeMode, string> = {
 }
 
 
-export default function Navigation({ currentView, onNavigate, onOpenFeedback }: NavigationProps) {
+export default function Navigation({
+  currentView,
+  onNavigate,
+  onOpenFeedback,
+  canManageConfiguration,
+}: NavigationProps) {
   const styles = useNavigationStyles()
   const { mode, resolved, setMode } = useTheme()
   const feedbackRestoreFocusTarget = useRestoreFocusTarget()
@@ -96,6 +110,17 @@ export default function Navigation({ currentView, onNavigate, onOpenFeedback }: 
 
         <Button
           className={styles.navButton}
+          data-active={currentView === 'scenarios'}
+          appearance="subtle"
+          icon={<ScriptRegular />}
+          title="Scanner"
+          aria-label="Scanner"
+          aria-current={currentView === 'scenarios' ? 'page' : undefined}
+          onClick={() => onNavigate('scenarios')}
+        />
+
+        <Button
+          className={styles.navButton}
           data-active={currentView === 'registry'}
           appearance="subtle"
           icon={<SettingsRegular />}
@@ -115,6 +140,20 @@ export default function Navigation({ currentView, onNavigate, onOpenFeedback }: 
           aria-current={currentView === 'initializers' ? 'page' : undefined}
           onClick={() => onNavigate('initializers')}
         />
+
+        {canManageConfiguration && (
+          <Button
+            className={styles.navButton}
+            data-active={currentView === 'configuration'}
+            appearance="subtle"
+            icon={<SettingsRegular />}
+            title="Configuration"
+            aria-label="Configuration"
+            aria-current={currentView === 'configuration' ? 'page' : undefined}
+            onClick={() => onNavigate('configuration')}
+          />
+        )}
+
       </nav>
 
       <div className={styles.spacer} />

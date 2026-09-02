@@ -239,7 +239,7 @@ test.describe("Accessibility", () => {
     await expect(input).toBeFocused();
   });
 
-  test("should have accessible target table in config view", async ({ page }) => {
+  test("should have accessible target table in targets view", async ({ page }) => {
     // Mock targets API for consistent test
     await page.route(/\/api\/targets/, async (route) => {
       await route.fulfill({
