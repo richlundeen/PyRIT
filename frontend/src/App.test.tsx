@@ -359,7 +359,7 @@ jest.mock("./components/Scenarios/ScenarioDetail", () => {
       <div data-testid="scenario-detail">
         <span data-testid="scenario-detail-has-target">{activeTarget ? "yes" : "no"}</span>
         <span data-testid="scenario-detail-labels-json">{JSON.stringify(labels)}</span>
-        <button onClick={() => onNavigate("targets")} data-testid="scenario-detail-go-config">
+        <button onClick={() => onNavigate("registry")} data-testid="scenario-detail-go-config">
           Configure target
         </button>
       </div>
@@ -511,14 +511,14 @@ describe("App", () => {
     expect(screen.getByTestId("scenario-detail-labels-json")).toHaveTextContent("operator");
   });
 
-  it("navigates from scenario detail to targets when it requests it", () => {
+  it("navigates from scenario detail to the registry when it requests it", () => {
     renderApp("/scanner/foundry.red_team_agent");
 
     fireEvent.click(screen.getByTestId("scenario-detail-go-config"));
 
     expect(screen.getByTestId("main-layout")).toHaveAttribute(
       "data-current-view",
-      "targets"
+      "registry"
     );
     expect(screen.getByTestId("target-config")).toBeInTheDocument();
   });

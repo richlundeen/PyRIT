@@ -15,7 +15,6 @@ import {
   HistoryRegular,
   PersonFeedbackRegular,
   ScriptRegular,
-  WrenchRegular,
   OpenRegular,
   WeatherMoonRegular,
   WeatherSunnyRegular,
@@ -128,17 +127,6 @@ export default function Navigation({
           aria-label="Registry"
           aria-current={currentView === 'registry' ? 'page' : undefined}
           onClick={() => onNavigate('registry')}
-        />
-
-        <Button
-          className={styles.navButton}
-          data-active={currentView === 'initializers'}
-          appearance="subtle"
-          icon={<WrenchRegular />}
-          title="Initializers"
-          aria-label="Initializers"
-          aria-current={currentView === 'initializers' ? 'page' : undefined}
-          onClick={() => onNavigate('initializers')}
         />
 
         {canManageConfiguration && (

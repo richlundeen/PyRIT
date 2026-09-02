@@ -138,8 +138,7 @@ describe("Navigation", () => {
       "Chat",
       "Attack History",
       "Scanner",
-      "Targets",
-      "Initializers",
+      "Registry",
       "Configuration",
     ]);
     expect(screen.queryByRole("button", { name: "Scenario History" })).not.toBeInTheDocument();
