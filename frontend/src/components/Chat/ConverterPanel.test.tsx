@@ -71,7 +71,7 @@ function renderPanel(
         previewText=""
         attachmentData={{}}
         activeInputTypes={['text']}
-        onUseConvertedValue={jest.fn()}
+        onUseConvertedValues={jest.fn()}
         {...props}
       />
     </FluentProvider>,
@@ -129,14 +129,15 @@ describe('ConverterPanel', () => {
     expect(await screen.findByTestId('converter-panel-error')).toBeInTheDocument()
   })
 
-  it('shows the read-only input and only add actions before a converter is selected', async () => {
+  it('shows the input as a non-editable display and only add actions before selection', async () => {
     const user = userEvent.setup()
     renderPanel({ previewText: 'hello' })
 
     await screen.findByTestId('converter-panel-list')
 
-    expect(screen.getByTestId('converter-input-value')).toHaveValue('hello')
-    expect(screen.getByTestId('converter-input-value')).toHaveAttribute('readonly')
+    expect(screen.getByTestId('converter-input-value')).toHaveTextContent('hello')
+    expect(screen.getByTestId('converter-input-value').querySelector('textarea')).toBeNull()
+    expect(screen.getByText('Input - Text')).toBeInTheDocument()
     expect(screen.getByTestId('converter-panel-select')).toHaveTextContent('Add converter...')
     expect(screen.queryByTestId('converter-preview-btn')).not.toBeInTheDocument()
     expect(screen.queryByTestId('converter-preview-result')).not.toBeInTheDocument()
@@ -191,7 +192,7 @@ describe('ConverterPanel', () => {
     await selectConverter('base64-default')
     await user.click(screen.getByTestId('converter-preview-btn'))
 
-    expect(await screen.findByTestId('converter-preview-result')).toHaveValue('aGVsbG8=')
+    expect(await screen.findByTestId('converter-preview-result')).toHaveTextContent('aGVsbG8=')
     expect(mockedConvertersApi.previewConversion).toHaveBeenCalledWith({
       original_value: 'hello',
       converter_ids: ['base64-default'],
@@ -221,10 +222,8 @@ describe('ConverterPanel', () => {
 
     expect(screen.getByTestId('converter-item-base64-default')).toBeInTheDocument()
     expect(screen.getByTestId('converter-item-suffix-default')).toBeInTheDocument()
-    expect(screen.getByTestId('converter-stage-output-0').querySelector('textarea'))
-      .toHaveValue('aGVsbG8=')
-    expect(screen.getByTestId('converter-stage-output-1').querySelector('textarea'))
-      .toHaveValue('aGVsbG8=-suffix')
+    expect(screen.getByTestId('converter-stage-output-0')).toHaveTextContent('aGVsbG8=')
+    expect(screen.getByTestId('converter-stage-output-1')).toHaveTextContent('aGVsbG8=-suffix')
     expect(mockedConvertersApi.previewConversion).toHaveBeenCalledWith({
       original_value: 'hello',
       converter_ids: ['base64-default', 'suffix-default'],
@@ -244,7 +243,7 @@ describe('ConverterPanel', () => {
     await selectConverter('suffix-default')
 
     await user.click(screen.getByRole('button', {
-      name: 'Remove converter base64-default at position 1',
+      name: 'Remove converter base64-default',
     }))
 
     expect(screen.queryByTestId('converter-item-base64-default')).not.toBeInTheDocument()
@@ -265,7 +264,7 @@ describe('ConverterPanel', () => {
 
     await user.click(screen.getByTestId('converter-preview-btn'))
 
-    expect(await screen.findByTestId('converter-preview-result')).toHaveValue('converted')
+    expect(await screen.findByTestId('converter-preview-result')).toHaveTextContent('converted')
   })
 
   it('refreshes and selects a converter created from the shared dialog', async () => {
@@ -287,23 +286,158 @@ describe('ConverterPanel', () => {
   })
 
   it('returns the selected registry ID with the converted value', async () => {
-    const onUseConvertedValue = jest.fn()
+    const onUseConvertedValues = jest.fn()
     mockedConvertersApi.previewConversion.mockResolvedValue(
       makePreviewResponse(['base64-default'], ['converted']),
     )
     const user = userEvent.setup()
-    renderPanel({ previewText: 'hello', onUseConvertedValue })
+    renderPanel({ previewText: 'hello', onUseConvertedValues })
     await screen.findByTestId('converter-panel-list')
     await selectConverter('base64-default')
     await user.click(screen.getByTestId('converter-preview-btn'))
     expect(await screen.findByTestId('use-converted-btn')).toBeEnabled()
     await user.click(await screen.findByTestId('use-converted-btn'))
 
-    expect(onUseConvertedValue).toHaveBeenCalledWith(expect.objectContaining({
-      converterInstanceIds: ['base64-default'],
-      convertedValue: 'converted',
-    }))
+    expect(onUseConvertedValues).toHaveBeenCalledWith([
+      expect.objectContaining({
+        converterInstanceIds: ['base64-default'],
+        convertedValue: 'converted',
+      }),
+    ])
   })
+
+  it('reorders a pipeline with the keyboard before preview', async () => {
+    const secondConverter = makeConverter('suffix-default', 'SuffixAppendConverter')
+    mockedConvertersApi.listConverters.mockResolvedValue({
+      items: [textConverter, secondConverter],
+    })
+    mockedConvertersApi.previewConversion.mockResolvedValue(
+      makePreviewResponse(
+        ['suffix-default', 'base64-default'],
+        ['hello-suffix', 'aGVsbG8tc3VmZml4'],
+      ),
+    )
+    const user = userEvent.setup()
+    renderPanel({ previewText: 'hello' })
+    await screen.findByTestId('converter-panel-list')
+    await selectConverter('base64-default')
+    await selectConverter('suffix-default')
+
+    await user.click(screen.getByRole('button', { name: 'Reorder converter suffix-default' }))
+    await user.keyboard('{ArrowUp}')
+    await user.click(screen.getByTestId('converter-preview-btn'))
+
+    expect(mockedConvertersApi.previewConversion).toHaveBeenCalledWith(
+      expect.objectContaining({ converter_ids: ['suffix-default', 'base64-default'] }),
+    )
+  })
+
+  it('preserves, previews, and applies text and image pipelines together', async () => {
+    const onUseConvertedValues = jest.fn()
+    const inputImage = 'data:image/png;base64,aW5wdXQ='
+    const outputImage = 'data:image/png;base64,b3V0cHV0'
+    mockedConvertersApi.listConverters.mockResolvedValue({
+      items: [textConverter, imageConverter],
+    })
+    mockedConvertersApi.previewConversion.mockImplementation(async (request) => {
+      if (request.original_value_data_type === 'image_path') {
+        return {
+          original_value: inputImage,
+          original_value_data_type: 'image_path',
+          converted_value: outputImage,
+          converted_value_data_type: 'image_path',
+          steps: [{
+            converter_id: 'image-compressor',
+            converter_type: 'ImageCompressionConverter',
+            input_value: inputImage,
+            input_data_type: 'image_path',
+            output_value: outputImage,
+            output_data_type: 'image_path',
+          }],
+        }
+      }
+      return makePreviewResponse(['base64-default'], ['aGVsbG8='])
+    })
+    const user = userEvent.setup()
+    renderPanel({
+      previewText: 'hello',
+      attachmentData: { image: inputImage },
+      activeInputTypes: ['text', 'image'],
+      onUseConvertedValues,
+    })
+    await screen.findByTestId('converter-panel-list')
+
+    await selectConverter('base64-default')
+    await user.click(screen.getByTestId('converter-tab-image'))
+    await selectConverter('image-compressor')
+    expect(screen.getByTestId('converter-item-image-compressor')).toBeInTheDocument()
+    expect(screen.getByTestId('converter-input-value').querySelector('img')).toHaveAttribute('src', inputImage)
+
+    await user.click(screen.getByTestId('converter-tab-text'))
+    expect(screen.getByTestId('converter-item-base64-default')).toBeInTheDocument()
+    await user.click(screen.getByTestId('converter-preview-btn'))
+
+    expect(mockedConvertersApi.previewConversion).toHaveBeenCalledTimes(2)
+    await user.click(screen.getByTestId('converter-tab-image'))
+    expect(await screen.findByTestId('converter-preview-result')).toContainElement(
+      screen.getByRole('img', { name: 'Output - Image preview' }),
+    )
+    await user.click(screen.getByTestId('use-converted-btn'))
+    expect(onUseConvertedValues).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({ pieceType: 'text', convertedValue: 'aGVsbG8=' }),
+      expect.objectContaining({ pieceType: 'image', convertedValue: outputImage }),
+    ]))
+  })
+
+  it.each([
+    ['audio', 'audio_path', 'audio', 'data:audio/wav;base64,b3V0cHV0'],
+    ['video', 'video_path', 'video', 'data:video/mp4;base64,b3V0cHV0'],
+    ['file', 'binary_path', 'a', '/tmp/converted.bin'],
+  ])(
+    'renders %s inputs and outputs as media instead of paths',
+    async (pieceType, dataType, mediaSelector, outputValue) => {
+      const converter = makeConverter(
+        `${pieceType}-converter`,
+        `${pieceType}Converter`,
+        [dataType],
+        [dataType],
+      )
+      const inputValue = pieceType === 'file'
+        ? '/tmp/input.bin'
+        : `data:${pieceType}/example;base64,aW5wdXQ=`
+      mockedConvertersApi.listConverters.mockResolvedValue({ items: [converter] })
+      mockedConvertersApi.previewConversion.mockResolvedValue({
+        original_value: inputValue,
+        original_value_data_type: dataType,
+        converted_value: outputValue,
+        converted_value_data_type: dataType,
+        steps: [{
+          converter_id: converter.converter_id,
+          converter_type: converter.identifier.class_name,
+          input_value: inputValue,
+          input_data_type: dataType,
+          output_value: outputValue,
+          output_data_type: dataType,
+        }],
+      })
+      const user = userEvent.setup()
+      renderPanel({
+        activeInputTypes: ['text', pieceType],
+        attachmentData: { [pieceType]: inputValue },
+      })
+      await screen.findByTestId('converter-panel-list')
+
+      await user.click(screen.getByTestId(`converter-tab-${pieceType}`))
+      await selectConverter(converter.converter_id)
+      expect(screen.getByTestId('converter-input-value').querySelector(mediaSelector))
+        .toBeInTheDocument()
+      await user.click(screen.getByTestId('converter-preview-btn'))
+
+      const output = await screen.findByTestId('converter-preview-result')
+      expect(output.querySelector(mediaSelector)).toBeInTheDocument()
+      expect(output).not.toHaveTextContent(outputValue)
+    },
+  )
 
   it('closes the panel', async () => {
     const onClose = jest.fn()

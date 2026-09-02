@@ -1,3 +1,5 @@
+import type { ConverterConfigurationRequest, MessagePieceRequest } from '@/types'
+
 export const PIECE_TYPE_TO_DATA_TYPE: Record<string, string> = {
   text: 'text',
   image: 'image_path',
@@ -18,6 +20,26 @@ export interface PieceConversion {
    * changes the data type — e.g. PDFConverter takes text and emits binary_path.
    */
   convertedDataType: string
+}
+
+export function buildRequestConverterConfigurations(
+  pieces: MessagePieceRequest[],
+  conversions: Record<string, PieceConversion>,
+): ConverterConfigurationRequest[] {
+  return Object.entries(conversions).flatMap(([pieceType, conversion]) => {
+    const dataType = PIECE_TYPE_TO_DATA_TYPE[pieceType]
+    if (!dataType || conversion.converterInstanceIds.length === 0) return []
+
+    const indexesToApply = pieces.flatMap((piece: MessagePieceRequest, index: number) => (
+      piece.data_type === dataType ? [index] : []
+    ))
+    if (indexesToApply.length === 0) return []
+
+    return [{
+      converter_ids: conversion.converterInstanceIds,
+      indexes_to_apply: indexesToApply,
+    }]
+  })
 }
 
 /**

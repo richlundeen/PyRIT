@@ -110,9 +110,11 @@ export const useCreateConverterDialogStyles = makeStyles({
   surface: {
     width: 'min(560px, calc(100vw - 32px))',
     maxWidth: '560px',
+    height: 'calc(100vh - 32px)',
+    maxHeight: 'calc(100vh - 32px)',
   },
   content: {
-    maxHeight: '70vh',
+    maxHeight: 'calc(100vh - 8rem)',
     overflowY: 'auto',
   },
   form: {
@@ -124,7 +126,7 @@ export const useCreateConverterDialogStyles = makeStyles({
     width: '100%',
   },
   typeListbox: {
-    maxHeight: 'min(32rem, 60vh)',
+    maxHeight: 'calc(100vh - 12rem)',
     overflowY: 'auto',
   },
   typeOption: {

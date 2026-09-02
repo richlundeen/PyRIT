@@ -454,12 +454,20 @@ export interface PrependedMessageRequest {
   pieces: MessagePieceRequest[]
 }
 
+export interface ConverterConfigurationRequest {
+  converter_ids: string[]
+  indexes_to_apply?: number[]
+  prompt_data_types_to_apply?: string[]
+}
+
 export interface AddMessageRequest {
   role: string
   pieces: MessagePieceRequest[]
   send: boolean
   target_registry_name?: string
   converter_ids?: string[]
+  request_converter_configurations?: ConverterConfigurationRequest[]
+  response_converter_configurations?: ConverterConfigurationRequest[]
   target_conversation_id: string
   labels?: Record<string, string>
 }

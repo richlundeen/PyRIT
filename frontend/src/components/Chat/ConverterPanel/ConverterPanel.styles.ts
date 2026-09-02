@@ -91,7 +91,7 @@ export const useConverterPanelStyles = makeStyles({
     width: '100%',
   },
   converterPickerListbox: {
-    maxHeight: 'min(32rem, 60vh)',
+    maxHeight: 'min(40rem, 75vh)',
     overflowY: 'auto',
   },
   createOption: {
@@ -154,6 +154,13 @@ export const useConverterPanelStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
+  },
+  dragHandle: {
+    cursor: 'grab',
+    flexShrink: 0,
+    ':active': {
+      cursor: 'grabbing',
+    },
   },
   previewButton: {
     alignSelf: 'flex-start',
@@ -330,12 +337,20 @@ export const useConverterPanelStyles = makeStyles({
     padding: tokens.spacingVerticalS,
     borderRadius: tokens.borderRadiusMedium,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground1,
+    backgroundColor: tokens.colorNeutralBackground2,
     minHeight: '80px',
-    whiteSpace: 'pre-wrap' as const,
-    wordBreak: 'break-word' as const,
     overflowY: 'auto' as const,
-    maxHeight: '200px',
+    maxHeight: '18rem',
+  },
+  valueSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  valueLabel: {
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
   },
   previewPre: {
     margin: 0,
@@ -344,6 +359,10 @@ export const useConverterPanelStyles = makeStyles({
     fontFamily: tokens.fontFamilyMonospace,
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground1,
+  },
+  emptyPreview: {
+    color: tokens.colorNeutralForeground4,
+    fontStyle: 'italic',
   },
   errorBody: {
     whiteSpace: 'pre-wrap',

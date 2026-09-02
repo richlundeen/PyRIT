@@ -312,13 +312,15 @@ async function mockBackendAPIs(page: Page) {
         );
         userText = textPiece?.original_value || "your message";
         convertedText = textPiece?.converted_value || null;
-        converterIds = body?.converter_ids || [];
+        converterIds = body?.request_converter_configurations
+          ?.flatMap((configuration: { converter_ids?: string[] }) => configuration.converter_ids ?? [])
+          ?? body?.converter_ids
+          ?? [];
       } catch {
         // ignore
       }
 
-      // Simulate backend conversion: when converter_ids are provided but no
-      // converted_value was set client-side, the backend applies the converter.
+      // Simulate backend conversion when the request contains converter configurations.
       if (!convertedText && converterIds.length > 0) {
         convertedText = Buffer.from(userText).toString("base64");
       }
@@ -597,7 +599,7 @@ test.describe("Converter Panel", () => {
     // Select Base64Converter
     await selectConverter(page, "Base64Converter");
 
-    await expect(page.getByTestId("converter-input-value")).toHaveValue("hello");
+    await expect(page.getByTestId("converter-input-value")).toContainText("hello");
     // Description should be visible
     await expect(
       page.getByTestId("converter-item-Base64Converter")
@@ -607,7 +609,7 @@ test.describe("Converter Panel", () => {
     await expect(page.getByTestId("use-converted-btn")).toBeDisabled();
     await expect(page.getByTestId("converter-preview-result")).toHaveCount(0);
     await page.getByTestId("converter-preview-btn").click();
-    await expect(page.getByTestId("converter-preview-result")).toHaveValue("aGVsbG8=");
+    await expect(page.getByTestId("converter-preview-result")).toContainText("aGVsbG8=");
   });
 
   test("should apply converted value and send message with original+converted sections", async ({ page }) => {
@@ -689,13 +691,17 @@ test.describe("Converter Panel", () => {
 
     await expect(page.getByTestId("converter-item-Base64Converter")).toBeVisible();
     await expect(page.getByTestId("converter-item-CaesarConverter")).toBeVisible();
-    await expect(page.getByTestId("converter-stage-output-0").locator("textarea")).toHaveValue("");
-    await expect(page.getByTestId("converter-stage-output-1").locator("textarea")).toHaveValue("");
+    await expect(page.getByTestId("converter-stage-output-0")).toContainText(
+      "Run Preview to see this stage output.",
+    );
+    await expect(page.getByTestId("converter-stage-output-1")).toContainText(
+      "Run Preview to see this stage output.",
+    );
 
     await page.getByTestId("converter-preview-btn").click();
 
-    await expect(page.getByTestId("converter-stage-output-0").locator("textarea")).toHaveValue("aGVsbG8=");
-    await expect(page.getByTestId("converter-stage-output-1").locator("textarea")).toHaveValue(
+    await expect(page.getByTestId("converter-stage-output-0")).toContainText("aGVsbG8=");
+    await expect(page.getByTestId("converter-stage-output-1")).toContainText(
       "YUdWc2JHOD0=",
     );
   });
