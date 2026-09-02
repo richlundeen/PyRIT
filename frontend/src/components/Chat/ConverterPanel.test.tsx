@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FluentProvider, webLightTheme } from '@fluentui/react-components'
 
@@ -120,6 +120,20 @@ describe('ConverterPanel', () => {
 
     expect(mockedConvertersApi.listConverters).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('converter-panel-loading')).not.toBeInTheDocument()
+  })
+
+  it('shows each converter name once and makes its full header draggable', async () => {
+    const atbashConverter = makeConverter('AtBashConverter', 'AtBashConverter')
+    mockedConvertersApi.listConverters.mockResolvedValue({ items: [atbashConverter] })
+    renderPanel({ previewText: 'hello' })
+    await screen.findByTestId('converter-panel-list')
+
+    await selectConverter('AtBashConverter')
+
+    const card = screen.getByTestId('converter-item-AtBashConverter')
+    expect(within(card).getAllByText('AtBashConverter')).toHaveLength(1)
+    expect(screen.getByTestId('converter-drag-area-0')).toHaveAttribute('draggable', 'true')
+    expect(screen.getByRole('button', { name: 'Convert' })).toBeInTheDocument()
   })
 
   it('shows the registry error', async () => {
@@ -380,7 +394,7 @@ describe('ConverterPanel', () => {
     expect(mockedConvertersApi.previewConversion).toHaveBeenCalledTimes(2)
     await user.click(screen.getByTestId('converter-tab-image'))
     expect(await screen.findByTestId('converter-preview-result')).toContainElement(
-      screen.getByRole('img', { name: 'Output - Image preview' }),
+      screen.getByRole('img', { name: 'Converted output preview' }),
     )
     await user.click(screen.getByTestId('use-converted-btn'))
     expect(onUseConvertedValues).toHaveBeenCalledWith(expect.arrayContaining([

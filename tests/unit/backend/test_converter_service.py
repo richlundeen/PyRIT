@@ -172,6 +172,17 @@ class TestListConverterTypes:
         target_param = next(param for param in persuasion_entry.parameters if param.name == "converter_target")
         assert target_param.reference_type == "target"
 
+    async def test_types_include_path_parameters(self) -> None:
+        """Path parameters derived by the registry remain available through REST."""
+        service = ConverterService()
+
+        result = await service.list_converter_types_async()
+
+        transparency_entry = next(item for item in result.items if item.converter_type == "TransparencyAttackConverter")
+        path_param = next(param for param in transparency_entry.parameters if param.name == "benign_image_path")
+        assert path_param.required is True
+        assert path_param.type_name == "Path"
+
 
 class TestGetConverter:
     """Tests for ConverterService.get_converter method."""

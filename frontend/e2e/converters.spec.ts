@@ -550,6 +550,19 @@ test.describe("Converter Registry", () => {
     await expect(page.getByText("caesar-custom")).not.toBeVisible();
   });
 
+  test("should use the available viewport height for converter types", async ({ page }) => {
+    await page.getByRole("button", { name: "New Converter" }).click();
+    await page.getByRole("combobox", { name: "Converter type" }).click();
+
+    const listbox = page.getByRole("listbox");
+    await expect(listbox).toBeVisible();
+    const listboxBox = await listbox.boundingBox();
+    expect(listboxBox?.height).toBeGreaterThan(300);
+    await expect(
+      page.getByTestId("converter-type-option-PersuasionConverter"),
+    ).toBeInViewport();
+  });
+
   test("should create an LLM converter with a registered target", async ({ page }) => {
     await page.getByRole("button", { name: "New Converter" }).click();
     await page.getByRole("combobox", { name: "Converter type" }).click();
@@ -692,10 +705,10 @@ test.describe("Converter Panel", () => {
     await expect(page.getByTestId("converter-item-Base64Converter")).toBeVisible();
     await expect(page.getByTestId("converter-item-CaesarConverter")).toBeVisible();
     await expect(page.getByTestId("converter-stage-output-0")).toContainText(
-      "Run Preview to see this stage output.",
+      "Choose Convert to see this stage output.",
     );
     await expect(page.getByTestId("converter-stage-output-1")).toContainText(
-      "Run Preview to see this stage output.",
+      "Choose Convert to see this stage output.",
     );
 
     await page.getByTestId("converter-preview-btn").click();

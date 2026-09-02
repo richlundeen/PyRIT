@@ -108,6 +108,35 @@ describe('CreateConverterDialog', () => {
     expect(mockedConvertersApi.createConverter).not.toHaveBeenCalled()
   })
 
+  it('offers upload for every Path parameter', async () => {
+    mockedConvertersApi.listConverterTypes.mockResolvedValue({
+      items: [{
+        converter_type: 'PathConverter',
+        supported_input_types: ['text'],
+        supported_output_types: ['text'],
+        parameters: [{
+          name: 'source',
+          type_name: 'Path',
+          required: true,
+          default: null,
+          choices: null,
+          description: 'Input asset.',
+        }],
+        is_llm_based: false,
+        description: 'Uses an input asset.',
+      }],
+    })
+    renderDialog()
+
+    await selectConverterType('PathConverter')
+
+    expect(screen.getByLabelText('source *')).toHaveAttribute(
+      'placeholder',
+      'Upload a file or enter a server path',
+    )
+    expect(screen.getByRole('button', { name: 'Upload' })).toBeInTheDocument()
+  })
+
   it('creates a named converter through the registry API', async () => {
     const onCreated = jest.fn()
     mockedConvertersApi.createConverter.mockResolvedValue({

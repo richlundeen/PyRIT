@@ -51,7 +51,7 @@ interface PreviewSnapshot {
 interface ValuePreviewProps {
   dataType: string
   emptyText: string
-  label: string
+  label?: string
   sectionTestId?: string
   testId?: string
   value?: string
@@ -96,6 +96,7 @@ function ValuePreview({
   value = '',
 }: ValuePreviewProps) {
   const styles = useConverterPanelStyles()
+  const accessibleLabel = label ?? 'Converted output'
 
   let content: React.ReactNode
   if (!value) {
@@ -106,11 +107,15 @@ function ValuePreview({
     const mediaUrl = buildMediaUrl(value)
     const attachmentKind = dataTypeToAttachmentKind(dataType)
     if (attachmentKind === 'image') {
-      content = <img className={styles.previewImage} src={mediaUrl} alt={`${label} preview`} />
+      content = <img className={styles.previewImage} src={mediaUrl} alt={`${accessibleLabel} preview`} />
     } else if (attachmentKind === 'audio') {
-      content = <audio className={styles.previewAudio} src={mediaUrl} controls aria-label={`${label} preview`} />
+      content = (
+        <audio className={styles.previewAudio} src={mediaUrl} controls aria-label={`${accessibleLabel} preview`} />
+      )
     } else if (attachmentKind === 'video') {
-      content = <video className={styles.previewVideo} src={mediaUrl} controls aria-label={`${label} preview`} />
+      content = (
+        <video className={styles.previewVideo} src={mediaUrl} controls aria-label={`${accessibleLabel} preview`} />
+      )
     } else {
       content = (
         <div className={styles.fileChip}>
@@ -133,9 +138,11 @@ function ValuePreview({
 
   return (
     <section className={styles.valueSection} data-testid={sectionTestId}>
-      <Text className={styles.valueLabel} size={200} weight="semibold">
-        {label}
-      </Text>
+      {label && (
+        <Text className={styles.valueLabel} size={200} weight="semibold">
+          {label}
+        </Text>
+      )}
       <div className={styles.outputBox} data-testid={testId}>
         {content}
       </div>
@@ -472,7 +479,7 @@ export default function ConverterPanel({
           <div className={styles.headerTitle}>
             <Text weight="semibold" size={300}>Converters</Text>
             <Text size={200} className={styles.hintText}>
-              Build and preview registered converter pipelines.
+              Build and convert registered converter pipelines.
             </Text>
           </div>
           <Button
@@ -543,7 +550,7 @@ export default function ConverterPanel({
                   className={styles.previewButton}
                   data-testid="converter-preview-btn"
                 >
-                  {isPreviewing ? 'Converting...' : 'Preview'}
+                  {isPreviewing ? 'Converting...' : 'Convert'}
                 </Button>
               )}
               {previewErrors[effectiveActiveTab] && (
@@ -566,34 +573,46 @@ export default function ConverterPanel({
                     onDragOver={(event: DragEvent<HTMLDivElement>) => event.preventDefault()}
                     onDrop={(event: DragEvent<HTMLDivElement>) => handleDrop(event, index)}
                   >
-                    <div className={styles.converterCardHeader}>
+                    <div
+                      className={styles.converterCardHeader}
+                      draggable
+                      data-testid={`converter-drag-area-${index}`}
+                      onDragStart={(event: DragEvent<HTMLDivElement>) => {
+                        if ((event.target as HTMLElement).closest('[data-no-drag]')) {
+                          event.preventDefault()
+                          return
+                        }
+                        handleDragStart(event, index)
+                      }}
+                      onDragEnd={() => { draggedConverterIndex.current = null }}
+                    >
                       <Button
                         appearance="subtle"
                         size="small"
                         icon={<ReOrderDotsVerticalRegular />}
-                        draggable
                         className={styles.dragHandle}
                         aria-label={`Reorder converter ${converter.converter_id}`}
-                        title="Drag to reorder. Use the arrow keys for keyboard reordering."
-                        onDragStart={(event: DragEvent<HTMLButtonElement>) => handleDragStart(event, index)}
-                        onDragEnd={() => { draggedConverterIndex.current = null }}
+                        title="Drag this header to reorder. Use the arrow keys for keyboard reordering."
                         onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => handleReorderKeyDown(event, index)}
                       />
                       <Text weight="semibold" size={300} className={styles.converterName}>
                         {converter.converter_id}
                       </Text>
+                      {converter.is_llm_based && <span className={styles.llmBadge}>LLM</span>}
                       <Button
                         appearance="subtle"
                         size="small"
                         icon={<DismissRegular />}
+                        data-no-drag
                         aria-label={`Remove converter ${converter.converter_id}`}
                         onClick={() => removeConverter(index)}
                       />
                     </div>
-                    <Text size={200} className={styles.hintText}>
-                      {converter.identifier.class_name}
-                      {converter.is_llm_based && <span className={styles.llmBadge}>LLM</span>}
-                    </Text>
+                    {converter.identifier.class_name !== converter.converter_id && (
+                      <Text size={200} className={styles.hintText}>
+                        {converter.identifier.class_name}
+                      </Text>
+                    )}
                     <Text size={200} className={styles.hintText}>
                       {converter.description || 'No description is available.'}
                     </Text>
@@ -602,9 +621,8 @@ export default function ConverterPanel({
                       emptyText={
                         previewResponse
                           ? 'This stage returned an empty value.'
-                          : 'Run Preview to see this stage output.'
+                          : 'Choose Convert to see this stage output.'
                       }
-                      label={`Output - ${formatDataType(outputDataType)}`}
                       sectionTestId={`converter-stage-output-${index}`}
                       testId={
                         previewResponse && index === selectedConverters.length - 1

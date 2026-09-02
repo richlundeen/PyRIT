@@ -177,6 +177,11 @@ export const useConverterPanelStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: tokens.spacingHorizontalS,
+    cursor: 'grab',
+    userSelect: 'none',
+    ':active': {
+      cursor: 'grabbing',
+    },
   },
   converterName: {
     minWidth: 0,

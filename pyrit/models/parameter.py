@@ -9,14 +9,21 @@ import copy
 import types
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Any, Literal, Union, get_args, get_origin
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_serializer, model_validator
 
 from pyrit.common.apply_defaults import REQUIRED_VALUE
 
-_SUPPORTED_SCALAR_TYPES: tuple[type, ...] = (str, int, float, bool)
-_SCALAR_NAME_TO_TYPE: dict[str, type] = {"int": int, "float": float, "bool": bool, "str": str}
+_SUPPORTED_SCALAR_TYPES: tuple[type, ...] = (str, int, float, bool, Path)
+_SCALAR_NAME_TO_TYPE: dict[str, type] = {
+    "Path": Path,
+    "bool": bool,
+    "float": float,
+    "int": int,
+    "str": str,
+}
 
 
 class ComponentType(str, Enum):
@@ -197,7 +204,7 @@ class Parameter(BaseModel):
         Whether a single string token can be coerced to this parameter's value.
 
         True for a non-reference plain scalar (``str`` / ``int`` / ``float`` /
-        ``bool``), ``Literal[...]``, or ``Enum`` parameter — exactly the forms a
+        ``bool`` / ``Path``), ``Literal[...]``, or ``Enum`` parameter — exactly the forms a
         text field or CLI token can supply. References and structured types (lists
         and arbitrary objects) are False and are surfaced/handled elsewhere.
 
@@ -290,7 +297,7 @@ class Parameter(BaseModel):
 
         raise ValueError(
             f"Parameter '{self.name}' has unsupported param_type {param_type!r}. "
-            f"Supported types: str, int, float, bool, Literal[...], Enum, a list of those, "
+            f"Supported types: str, int, float, bool, Path, Literal[...], Enum, a list of those, "
             f"or None (or provide a default)."
         )
 
@@ -320,7 +327,7 @@ def _is_scalar_param_type(annotation: Any) -> bool:
     """
     Return True when ``annotation`` is a coercible scalar form.
 
-    A scalar form is a plain scalar (``str`` / ``int`` / ``float`` / ``bool``) or a
+    A scalar form is a plain scalar (``str`` / ``int`` / ``float`` / ``bool`` / ``Path``) or a
     constrained scalar (``Literal[...]`` or an ``Enum`` subclass) that carries its
     own allowed set.
 
@@ -364,6 +371,8 @@ def _coerce_simple_value(*, param_name: str, annotation: Any, raw_value: Any) ->
         return _coerce_scalar(param_name=param_name, scalar_type=float, raw_value=raw_value)
     if annotation is str:
         return str(raw_value)
+    if annotation is Path:
+        return Path(raw_value)
     return raw_value
 
 

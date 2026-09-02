@@ -122,7 +122,8 @@ function ParameterInput({
     )
   }
 
-  const isFile = /path|file/i.test(parameter.name)
+  const isFile = parameter.type_name === 'Path'
+    || /path|file/i.test(parameter.name)
     || /path|file/i.test(parameter.description ?? '')
 
   return (
@@ -136,10 +137,10 @@ function ParameterInput({
           <Input
             className={styles.fileInput}
             value={value}
-            placeholder={parameterDefaultValue(parameter) || 'Select a file'}
+            placeholder={parameterDefaultValue(parameter) || 'Upload a file or enter a server path'}
             onChange={(_, data) => onChange(data.value)}
           />
-          <Button type="button" onClick={onBrowse}>Browse</Button>
+          <Button type="button" onClick={onBrowse}>Upload</Button>
         </div>
       ) : (
         <Input
@@ -173,14 +174,20 @@ export default function CreateConverterDialog({
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    setLoading(true)
-    setError(null)
-    Promise.all([
-      convertersApi.listConverterTypes(),
-      targetsApi.listTargets(200),
-      convertersApi.listConverters(),
-    ])
-      .then(([response, targetResponse, converterResponse]) => {
+    Promise.resolve()
+      .then(() => {
+        if (cancelled) return null
+        setLoading(true)
+        setError(null)
+        return Promise.all([
+          convertersApi.listConverterTypes(),
+          targetsApi.listTargets(200),
+          convertersApi.listConverters(),
+        ])
+      })
+      .then((responses) => {
+        if (!responses) return
+        const [response, targetResponse, converterResponse] = responses
         if (!cancelled) {
           setConverterTypes(
             response.items.filter((item) => !HIDDEN_CONVERTER_TYPES.has(item.converter_type)),
@@ -346,10 +353,13 @@ export default function CreateConverterDialog({
                     <Dropdown
                       aria-label="Converter type"
                       className={styles.typeDropdown}
-                      inlinePopup
                       listbox={{ className: styles.typeListbox }}
                       placeholder="Select a converter type"
-                      positioning={{ matchTargetSize: 'width' }}
+                      positioning={{
+                        align: 'start',
+                        matchTargetSize: 'width',
+                        position: 'below',
+                      }}
                       selectedOptions={selectedType ? [selectedType] : []}
                       value={selectedType}
                       onOptionSelect={(_, data) => {
