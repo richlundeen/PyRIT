@@ -208,7 +208,7 @@ async function installTouchTargetMocks(page: Page): Promise<void> {
       );
       return;
     }
-    if (apiPath === "/targets/catalog") {
+    if (apiPath === "/targets/types") {
       await route.fulfill(
         jsonResponse({
           items: [
@@ -241,7 +241,7 @@ async function installTouchTargetMocks(page: Page): Promise<void> {
       );
       return;
     }
-    if (apiPath === "/converters/catalog" || apiPath === "/converters") {
+    if (apiPath === "/converters/types" || apiPath === "/converters") {
       await route.fulfill(jsonResponse({ items: [] }));
       return;
     }
