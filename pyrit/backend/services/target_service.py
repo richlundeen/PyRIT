@@ -22,7 +22,6 @@ from pyrit.backend.mappers.target_mappers import target_object_to_instance
 from pyrit.backend.models.common import PaginationInfo
 from pyrit.backend.models.targets import (
     CreateTargetRequest,
-    TargetCatalogResponse,
     TargetListResponse,
     TargetTypeEntry,
     TargetTypeResponse,
@@ -151,23 +150,6 @@ class TargetService:
             for metadata in metadata_items
         ]
         return TargetTypeResponse(items=items)
-
-    async def list_target_catalog_async(self) -> TargetCatalogResponse:
-        """
-        Return the legacy projection used by the current configuration UI.
-
-        Remove this method with the ``/catalog`` route after the frontend uses
-        ``list_target_types_async``.
-
-        Returns:
-            TargetCatalogResponse: The scalar-only legacy projection.
-        """
-        types_response = await self.list_target_types_async()
-        items = [
-            entry.model_copy(update={"parameters": [p for p in entry.parameters if p.is_string_coercible]})
-            for entry in types_response.items
-        ]
-        return TargetCatalogResponse(items=items)
 
     async def create_target_async(self, *, request: CreateTargetRequest) -> TargetInstance:
         """

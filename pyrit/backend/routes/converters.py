@@ -12,7 +12,6 @@ from fastapi import APIRouter, HTTPException, status
 
 from pyrit.backend.models.common import ProblemDetail
 from pyrit.backend.models.converters import (
-    ConverterCatalogResponse,
     ConverterInstance,
     ConverterInstanceListResponse,
     ConverterPreviewRequest,
@@ -55,24 +54,6 @@ async def list_converter_types() -> ConverterTypeResponse:  # pyrit-async-suffix
     """
     service = get_converter_service()
     return await service.list_converter_types_async()
-
-
-@router.get(
-    "/catalog",
-    response_model=ConverterCatalogResponse,
-)
-async def list_converter_catalog() -> ConverterCatalogResponse:  # pyrit-async-suffix-exempt
-    """
-    Return the legacy catalog projection used by the current chat UI.
-
-    Remove this route when the chat-migration stack layer switches to
-    ``/converters/types``.
-
-    Returns:
-        ConverterCatalogResponse: The scalar-only legacy catalog projection.
-    """
-    service = get_converter_service()
-    return await service.list_converter_catalog_async()
 
 
 @router.post(

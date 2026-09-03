@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from pyrit import converter
 from pyrit.backend.models.converters import (
@@ -120,48 +121,48 @@ class TestListConverters:
         assert result.items[0].identifier.params["param2"] == 42
 
 
-class TestListConverterCatalog:
-    """Tests for ConverterService.list_converter_catalog_async method."""
+class TestListConverterTypes:
+    """Tests for ConverterService.list_converter_types_async method."""
 
-    async def test_list_converter_catalog_returns_known_converter_types(self) -> None:
-        """Test that the converter catalog exposes available converter classes."""
+    async def test_list_converter_types_returns_known_converter_types(self) -> None:
+        """Test that the converter type projection exposes available converter classes."""
         service = ConverterService()
 
-        result = await service.list_converter_catalog_async()
+        result = await service.list_converter_types_async()
 
         converter_types = [item.converter_type for item in result.items]
         assert "Base64Converter" in converter_types
         assert "CaesarConverter" in converter_types
 
-    async def test_list_converter_catalog_includes_supported_types(self) -> None:
-        """Test that catalog entries include supported input and output types."""
+    async def test_list_converter_types_includes_supported_types(self) -> None:
+        """Test that type entries include supported input and output types."""
         service = ConverterService()
 
-        result = await service.list_converter_catalog_async()
+        result = await service.list_converter_types_async()
 
         base64_entry = next(item for item in result.items if item.converter_type == "Base64Converter")
         assert "text" in base64_entry.supported_input_types
         assert "text" in base64_entry.supported_output_types
 
-    async def test_catalog_includes_all_constructible_converters(self) -> None:
-        """The catalog surfaces every constructible converter, including base/helper classes.
+    async def test_types_include_all_constructible_converters(self) -> None:
+        """The projection surfaces every constructible converter, including base/helper classes.
 
         Whether to display a given converter is left to the caller (e.g. the frontend),
         so the service no longer hides anything.
         """
         service = ConverterService()
 
-        result = await service.list_converter_catalog_async()
+        result = await service.list_converter_types_async()
 
         converter_types = [item.converter_type for item in result.items]
         assert "Base64Converter" in converter_types
         assert "SelectiveTextConverter" in converter_types
 
-    async def test_catalog_serializes_parameter_type(self) -> None:
-        """Catalog renders the raw annotation into a human-readable type_name."""
+    async def test_types_serialize_parameter_type(self) -> None:
+        """Type entries render the raw annotation into a human-readable type_name."""
         service = ConverterService()
 
-        result = await service.list_converter_catalog_async()
+        result = await service.list_converter_types_async()
 
         caesar_entry = next(item for item in result.items if item.converter_type == "CaesarConverter")
         caesar_param = next(p for p in caesar_entry.parameters if p.name == "caesar_offset")
@@ -177,19 +178,6 @@ class TestListConverterCatalog:
         assert persuasion_entry.is_llm_based is True
         target_param = next(param for param in persuasion_entry.parameters if param.name == "converter_target")
         assert target_param.reference_type == "target"
-
-    async def test_catalog_excludes_registry_reference_params(self) -> None:
-        """The compatibility catalog preserves the scalar-only form contract."""
-        service = ConverterService()
-
-        types_result = await service.list_converter_types_async()
-        catalog_result = await service.list_converter_catalog_async()
-
-        types_entry = next(item for item in types_result.items if item.converter_type == "PersuasionConverter")
-        catalog_entry = next(item for item in catalog_result.items if item.converter_type == "PersuasionConverter")
-        assert any(param.name == "converter_target" for param in types_entry.parameters)
-        assert all(param.name != "converter_target" for param in catalog_entry.parameters)
-        assert catalog_entry.parameters == [param for param in types_entry.parameters if param.is_string_coercible]
 
     async def test_types_include_path_parameters(self) -> None:
         """Path parameters derived by the registry remain available through REST."""
@@ -322,15 +310,9 @@ class TestCreateConverter:
         converter_obj = service.get_converter_object(converter_id=result.converter_id)
         assert converter_obj is not None
 
-    async def test_create_converter_without_name_preserves_chat_compatibility(self) -> None:
-        service = ConverterService()
-
-        result = await service.create_converter_async(
-            request=CreateConverterRequest(type="Base64Converter", params={}),
-        )
-
-        assert result.converter_id
-        assert service.get_converter_object(converter_id=result.converter_id) is not None
+    async def test_create_converter_requires_a_registry_name(self) -> None:
+        with pytest.raises(ValidationError):
+            CreateConverterRequest(type="Base64Converter", params={})  # type: ignore[call-arg]
 
     async def test_create_converter_rejects_duplicate_name(self) -> None:
         service = ConverterService()
@@ -343,7 +325,7 @@ class TestCreateConverter:
 
         assert service.get_converter_object(converter_id="shared-name") is original
 
-    @pytest.mark.parametrize("name", ["catalog", "preview", "types"])
+    @pytest.mark.parametrize("name", ["preview", "types"])
     async def test_create_converter_rejects_reserved_route_name(self, name: str) -> None:
         service = ConverterService()
         request = CreateConverterRequest(name=name, type="Base64Converter", params={})

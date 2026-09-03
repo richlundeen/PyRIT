@@ -44,7 +44,6 @@ const VIEW_PATHS: Record<ViewName, string> = {
   chat: '/chat',
   history: '/history',
   registry: '/registry/targets',
-  targets: '/registry/targets',
   scenarios: '/scanner',
   configuration: '/config',
 }

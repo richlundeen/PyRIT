@@ -96,7 +96,7 @@ class ConverterRegistry(Registry["Converter", ConverterMetadata]):
         super().__init__(lazy_discovery=lazy_discovery)
         self.instances: InstanceRegistry[Converter] = DefaultInstanceRegistry(
             instance_type=self._base_type,
-            reserved_names={"catalog", "preview", "types"},
+            reserved_names={"preview", "types"},
         )
 
     def create_named_instance(

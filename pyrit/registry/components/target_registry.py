@@ -83,7 +83,7 @@ class TargetRegistry(Registry["PromptTarget", TargetMetadata]):
         super().__init__(lazy_discovery=lazy_discovery)
         self.instances: InstanceRegistry[PromptTarget] = DefaultInstanceRegistry(
             instance_type=self._base_type,
-            reserved_names={"catalog", "types"},
+            reserved_names={"types"},
         )
 
     def create_named_instance(self, *, name: str, target_type: str, **kwargs: object) -> PromptTarget:
