@@ -120,9 +120,9 @@ test.describe("Accessibility", () => {
       });
     });
 
-    // Navigate to targets, set active, return to chat so input is enabled
-    await page.getByTitle("Targets").click();
-    await expect(page.getByText("Target Configuration")).toBeVisible({ timeout: 10000 });
+    // Navigate to the registry, set active, return to chat so input is enabled
+    await page.getByTitle("Registry").click();
+    await expect(page.getByText("Target Registry")).toBeVisible({ timeout: 10000 });
     const setActiveBtn = page.getByRole("button", { name: /set active/i });
     await expect(setActiveBtn).toBeVisible({ timeout: 5000 });
     await setActiveBtn.click();
@@ -146,8 +146,8 @@ test.describe("Accessibility", () => {
     const chatBtn = page.getByTitle("Chat");
     await expect(chatBtn).toBeVisible();
 
-    // Targets button
-    const configBtn = page.getByTitle("Targets");
+    // Registry button
+    const configBtn = page.getByTitle("Registry");
     await expect(configBtn).toBeVisible();
 
     // Theme toggle button (now a menu trigger with "Theme: <mode>" title)
@@ -219,9 +219,9 @@ test.describe("Accessibility", () => {
       });
     });
 
-    // Navigate to targets, set active, return to chat so input is enabled
-    await page.getByTitle("Targets").click();
-    await expect(page.getByText("Target Configuration")).toBeVisible({ timeout: 10000 });
+    // Navigate to the registry, set active, return to chat so input is enabled
+    await page.getByTitle("Registry").click();
+    await expect(page.getByText("Target Registry")).toBeVisible({ timeout: 10000 });
     const setActiveBtn = page.getByRole("button", { name: /set active/i });
     await expect(setActiveBtn).toBeVisible({ timeout: 5000 });
     await setActiveBtn.click();
@@ -265,9 +265,9 @@ test.describe("Accessibility", () => {
       });
     });
 
-    // Navigate to targets
-    await page.getByTitle("Targets").click();
-    await expect(page.getByText("Target Configuration")).toBeVisible();
+    // Navigate to the registry
+    await page.getByTitle("Registry").click();
+    await expect(page.getByText("Target Registry")).toBeVisible();
 
     // Table should exist
     const table = page.getByRole("table");
@@ -289,7 +289,7 @@ test.describe("Accessibility", () => {
 
     const views = [
       { button: "Attack History", heading: "Attack History" },
-      { button: "Targets", heading: "Target Configuration" },
+      { button: "Registry", heading: "Target Registry" },
       { button: "Chat", heading: "Chat" },
     ];
 
@@ -334,9 +334,9 @@ test.describe("Accessibility", () => {
         });
       });
 
-      await page.getByRole("button", { name: "Targets" }).click();
+      await page.getByRole("button", { name: "Registry" }).click();
       await expect(
-        page.getByRole("heading", { level: 1, name: "Target Configuration" })
+        page.getByRole("heading", { level: 1, name: "Target Registry" })
       ).toBeVisible();
       await expect(page.getByRole("button", { name: "Refresh" })).toBeEnabled();
       await expectMinimumTouchTarget(page.getByRole("button", { name: "Refresh" }));

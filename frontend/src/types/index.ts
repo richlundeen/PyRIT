@@ -233,10 +233,18 @@ export interface ConverterIdentifier {
 export interface ConverterInstance {
   converter_id: string
   identifier: ConverterIdentifier
+  is_llm_based?: boolean
+  description?: string | null
 }
 
 export interface ConverterListResponse {
   items: ConverterInstance[]
+}
+
+export interface CreateConverterRequest {
+  name?: string
+  type: string
+  params?: Record<string, unknown>
 }
 
 export interface Parameter {
@@ -247,10 +255,11 @@ export interface Parameter {
   default?: string | string[] | null
   choices?: string[] | null
   is_list?: boolean
+  reference_type?: 'target' | 'converter' | 'scorer' | 'scenario' | null
   description?: string | null
 }
 
-export interface ConverterCatalogEntry {
+export interface ConverterTypeEntry {
   converter_type: string
   supported_input_types: string[]
   supported_output_types: string[]
@@ -259,9 +268,13 @@ export interface ConverterCatalogEntry {
   description?: string | null
 }
 
-export interface ConverterCatalogResponse {
-  items: ConverterCatalogEntry[]
+export interface ConverterTypeListResponse {
+  items: ConverterTypeEntry[]
 }
+
+/** Temporary compatibility names used by the existing chat converter panel. */
+export type ConverterCatalogEntry = ConverterTypeEntry
+export type ConverterCatalogResponse = ConverterTypeListResponse
 
 export interface TargetCatalogEntry {
   target_type: string
