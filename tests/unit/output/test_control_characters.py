@@ -9,8 +9,11 @@ import pytest
 
 from pyrit.converter import AnsiAttackConverter
 from pyrit.models import AttackOutcome, AttackResult, Message, MessagePiece, Score
+from pyrit.output.attack_result.markdown import MarkdownAttackResultMemoryPrinter
 from pyrit.output.attack_result.pretty import PrettyAttackResultMemoryPrinter
+from pyrit.output.conversation.markdown import MarkdownConversationPrinter
 from pyrit.output.conversation.pretty import PrettyConversationPrinter
+from pyrit.output.score.markdown import MarkdownScorePrinter
 from pyrit.output.score.pretty import PrettyScorePrinter
 
 pytestmark = pytest.mark.usefixtures("patch_central_database")
@@ -82,6 +85,45 @@ async def test_attack_result_printer_escapes_summary(payload: str, enable_colors
     rendered = await printer.render_async(result)
 
     _assert_no_live_control_characters(rendered, enable_colors=enable_colors)
+
+
+@pytest.mark.parametrize("payload", AnsiAttackConverter.LIVE_PAYLOADS)
+async def test_markdown_conversation_printer_escapes_target_controlled_text(payload: str) -> None:
+    prompt = MessagePiece(role="user", original_value=f"original {payload}", converted_value=f"converted {payload}")
+    response = MessagePiece(role="assistant", original_value=f"response {payload}")
+    score = Score(score_value="true", score_type="true_false", score_rationale=f"quoted {payload}")
+    printer = MarkdownConversationPrinter(source=_ScoreSource([score]))
+
+    rendered = await printer.render_async(
+        [Message(message_pieces=[prompt]), Message(message_pieces=[response])], include_scores=True
+    )
+
+    _assert_no_live_control_characters(rendered, enable_colors=False)
+
+
+@pytest.mark.parametrize("payload", AnsiAttackConverter.LIVE_PAYLOADS)
+async def test_markdown_score_printer_escapes_rationale(payload: str) -> None:
+    score = Score(score_value="true", score_type="true_false", score_rationale=f"quoted {payload}")
+
+    rendered = await MarkdownScorePrinter().render_async([score])
+
+    _assert_no_live_control_characters(rendered, enable_colors=False)
+
+
+@pytest.mark.parametrize("payload", AnsiAttackConverter.LIVE_PAYLOADS)
+async def test_markdown_attack_result_printer_escapes_summary(payload: str) -> None:
+    printer = MarkdownAttackResultMemoryPrinter()
+    result = AttackResult(
+        conversation_id="conversation-id",
+        objective=f"objective {payload}",
+        outcome=AttackOutcome.FAILURE,
+        outcome_reason=f"reason {payload}",
+        metadata={"note": f"metadata {payload}"},
+    )
+
+    rendered = await printer.render_async(result)
+
+    _assert_no_live_control_characters(rendered, enable_colors=False)
 
 
 async def test_conversation_printer_escapes_target_color_codes() -> None:

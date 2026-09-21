@@ -6,6 +6,7 @@ import logging
 import os
 from pathlib import Path
 
+from pyrit.common.text_helper import escape_control_characters
 from pyrit.models import Message, MessagePiece
 from pyrit.output.conversation.base import ConversationPrinterBase
 from pyrit.output.conversation.source import ConversationSource, MemoryConversationSource
@@ -111,7 +112,7 @@ class MarkdownConversationPrinter(ConversationPrinterBase):
             if include_scores:
                 markdown_lines.extend(await self._format_message_scores_async(pieces=pieces))
 
-        return "\n".join(markdown_lines)
+        return escape_control_characters("\n".join(markdown_lines))
 
     async def _format_system_message_async(self, *, pieces: list[MessagePiece]) -> list[str]:
         """

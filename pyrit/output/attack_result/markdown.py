@@ -4,6 +4,7 @@
 import os
 from datetime import UTC, datetime
 
+from pyrit.common.text_helper import escape_control_characters
 from pyrit.models import AttackResult, ConversationType, Message, Score
 from pyrit.output.attack_result.base import AttackResultPrinterBase
 from pyrit.output.conversation.markdown import MarkdownConversationMemoryPrinter, MarkdownConversationPrinter
@@ -130,7 +131,7 @@ class MarkdownAttackResultPrinter(AttackResultPrinterBase):
         timestamp_utc = datetime.now(tz=UTC).isoformat().replace("+00:00", "Z")
         markdown_lines.append(f"*Report generated at {timestamp_utc}*")
 
-        return "\n".join(markdown_lines)
+        return escape_control_characters("\n".join(markdown_lines))
 
     async def _get_conversation_markdown_async(
         self,

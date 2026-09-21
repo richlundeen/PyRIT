@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from pyrit.common.text_helper import escape_control_characters
 from pyrit.models import Score, UndeterminedScoreError
 from pyrit.output.base import PrinterBase
 from pyrit.output.sink import Sink
@@ -77,4 +78,4 @@ class MarkdownScorePrinter(PrinterBase):
         Returns:
             str: The rendered scores markdown text.
         """
-        return "\n".join(self._format_score(score, indent=indent) for score in scores)
+        return escape_control_characters("\n".join(self._format_score(score, indent=indent) for score in scores))
