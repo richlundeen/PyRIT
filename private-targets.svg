@@ -1,30 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title description" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title description" font-family="Segoe UI, Helvetica, Arial, sans-serif">
   <title id="title">Shared and private targets</title>
-  <desc id="description">A shared target is visible to and usable by everyone. A private target is visible to and usable only by the user who made it, and anything built on it is private too. Credentials are whatever the target is configured with and never decide visibility. Every target reports whether the provider rejected its credentials on the last request.</desc>
-  <rect width="1200" height="560" fill="#ffffff"/>
+  <desc id="description">A shared target is visible to and usable by everyone; its credentials can be updated by anyone signed in only if whoever created it allowed updates. A private target is visible to and usable only by the user who made it, anything built on it is private too, and by default its creator can update its credentials. Credentials are whatever the target is configured with and never decide visibility. Every target reports whether the provider rejected its credentials on the last request, and shows nothing until it is used.</desc>
+  <rect width="1200" height="650" fill="#ffffff"/>
   <text x="40" y="58" font-size="34" font-weight="700" fill="#1d2733">Who can use a target</text>
-  <text x="40" y="94" font-size="20" fill="#5b6675">Visibility is a choice made when the target is created. It never depends on the credentials.</text>
+  <text x="40" y="94" font-size="20" fill="#5b6675">Visibility and credential updates are chosen when the target is created. Neither depends on the credentials.</text>
 
-  <rect x="40" y="130" width="540" height="280" rx="12" fill="#eef5ff" stroke="#2f6fd6" stroke-width="2"/>
+  <rect x="40" y="130" width="540" height="330" rx="12" fill="#eef5ff" stroke="#2f6fd6" stroke-width="2"/>
   <text x="68" y="174" font-size="26" font-weight="700" fill="#1d2733">Shared (default)</text>
   <text x="68" y="214" font-size="20" fill="#3c4a5c">Everyone sees it and can use it.</text>
   <text x="68" y="248" font-size="20" fill="#3c4a5c">Configured on the server, or created in the</text>
   <text x="68" y="274" font-size="20" fill="#3c4a5c">GUI or API with "Only me" off.</text>
-  <text x="68" y="314" font-size="20" fill="#3c4a5c">Anyone can update its credentials.</text>
-  <rect x="68" y="340" width="300" height="44" rx="8" fill="#ffffff" stroke="#2f6fd6"/>
-  <text x="86" y="369" font-size="18" font-family="Consolas, 'Courier New', monospace" fill="#2f6fd6">"private": false</text>
+  <text x="68" y="314" font-size="20" fill="#3c4a5c">Credentials can be updated only if its creator</text>
+  <text x="68" y="340" font-size="20" fill="#3c4a5c">(or initializer) allowed it; then by anyone.</text>
+  <rect x="68" y="372" width="430" height="64" rx="8" fill="#ffffff" stroke="#2f6fd6"/>
+  <text x="86" y="398" font-size="18" font-family="Consolas, 'Courier New', monospace" fill="#2f6fd6">"private": false</text>
+  <text x="86" y="424" font-size="18" font-family="Consolas, 'Courier New', monospace" fill="#2f6fd6">"allow_credential_updates": false</text>
 
-  <rect x="620" y="130" width="540" height="280" rx="12" fill="#f3efff" stroke="#6b3fb3" stroke-width="2"/>
+  <rect x="620" y="130" width="540" height="330" rx="12" fill="#f3efff" stroke="#6b3fb3" stroke-width="2"/>
   <text x="648" y="174" font-size="26" font-weight="700" fill="#1d2733">Private ("Only me")</text>
   <text x="648" y="214" font-size="20" fill="#3c4a5c">Only its creator sees it and can use it.</text>
   <text x="648" y="248" font-size="20" fill="#3c4a5c">For anyone else it doesn't exist.</text>
   <text x="648" y="282" font-size="20" fill="#3c4a5c">Anything built on it (a scorer, round robin,</text>
   <text x="648" y="308" font-size="20" fill="#3c4a5c">technique) is private too.</text>
-  <rect x="648" y="340" width="300" height="44" rx="8" fill="#ffffff" stroke="#6b3fb3"/>
-  <text x="666" y="369" font-size="18" font-family="Consolas, 'Courier New', monospace" fill="#6b3fb3">"private": true</text>
+  <text x="648" y="340" font-size="20" fill="#3c4a5c">Its creator can update its credentials.</text>
+  <rect x="648" y="372" width="430" height="64" rx="8" fill="#ffffff" stroke="#6b3fb3"/>
+  <text x="666" y="398" font-size="18" font-family="Consolas, 'Courier New', monospace" fill="#6b3fb3">"private": true</text>
+  <text x="666" y="424" font-size="18" font-family="Consolas, 'Courier New', monospace" fill="#6b3fb3">"allow_credential_updates": true</text>
 
-  <rect x="40" y="440" width="1120" height="92" rx="12" fill="#f6f7f9" stroke="#c8cdd4"/>
-  <text x="68" y="476" font-size="20" fill="#3c4a5c"><tspan font-weight="700" fill="#1d2733">Credentials either way:</tspan> whatever the target is configured with (a key, headers, the server's identity, or none).</text>
-  <text x="68" y="510" font-size="20" fill="#3c4a5c">Every target shows whether the provider accepted them on the last request:
-    <tspan fill="#1e8a4c" font-weight="700">key = accepted</tspan>, <tspan fill="#b53f3f" font-weight="700">lock = rejected</tspan>.</text>
+  <rect x="40" y="490" width="1120" height="134" rx="12" fill="#f6f7f9" stroke="#c8cdd4"/>
+  <text x="68" y="526" font-size="20" fill="#3c4a5c"><tspan font-weight="700" fill="#1d2733">Credentials either way:</tspan> whatever the target is configured with (a key, any headers, the server's</text>
+  <text x="68" y="554" font-size="20" fill="#3c4a5c">identity, or none). An update replaces the key or headers in place, without recreating the target.</text>
+  <text x="68" y="592" font-size="20" fill="#3c4a5c">Every target shows how the provider answered the last request:
+    <tspan fill="#1e8a4c" font-weight="700">key = accepted</tspan>, <tspan fill="#b53f3f" font-weight="700">lock = rejected</tspan>, nothing until it's used.</text>
 </svg>
